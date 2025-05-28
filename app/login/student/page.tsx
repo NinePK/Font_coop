@@ -1,26 +1,41 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // แก้ไขจาก 'next/router' เป็น 'next/navigation'
 import Link from 'next/link';
 
-const AdvisorLoginForm: React.FC = () => {
-  const [email, setEmail] = useState<string>('');
+// กำหนด type สำหรับ userType
+type UserType = 'student' | 'teacher';
+
+// กำหนด Props interface สำหรับ LDAPLoginForm
+interface LDAPLoginFormProps {
+  userType: UserType;
+}
+
+const LDAPLoginForm: React.FC<LDAPLoginFormProps> = ({ userType }) => {
+  const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   
+  // กำหนด type mapping สำหรับ title
+  const titleMap: Record<UserType, string> = {
+    'student': 'นิสิต',
+    'teacher': 'อาจารย์'
+  };
+  
+  // กำหนด type ของ event parameter
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/auth/advisor', {
+      const response = await fetch('/api/auth/ldap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ username, password, role: userType })
       });
       
       const data = await response.json();
@@ -32,10 +47,10 @@ const AdvisorLoginForm: React.FC = () => {
       // บันทึก token ลงใน localStorage
       localStorage.setItem('token', data.token);
       
-      // Redirect ไปยังหน้า Dashboard ของพนักงานที่ปรึกษา
-      router.push('/dashboard/advisor');
+      // Redirect ไปยังหน้า Dashboard ตามประเภทผู้ใช้
+      router.push(`/dashboard/${userType}`);
     } catch (err) {
-      // ตรวจสอบประเภทของ error และจัดการให้เหมาะสม
+      // กำหนด type ของ error
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -53,7 +68,7 @@ const AdvisorLoginForm: React.FC = () => {
           &larr; กลับ
         </Link>
         
-        <h1 className="text-2xl font-semibold text-center mb-6">เข้าสู่ระบบสำหรับพนักงานที่ปรึกษา</h1>
+        <h1 className="text-2xl font-semibold text-center mb-6">เข้าสู่ระบบสำหรับ{titleMap[userType]}</h1>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -63,14 +78,14 @@ const AdvisorLoginForm: React.FC = () => {
         
         <div className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-gray-700 mb-1">
-              อีเมล
+            <label htmlFor="username" className="block text-gray-700 mb-1">
+              ชื่อผู้ใช้
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
               className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -92,7 +107,7 @@ const AdvisorLoginForm: React.FC = () => {
             onClick={handleSubmit}
             disabled={loading}
             className={`w-full py-2 px-4 rounded-md text-white font-medium ${
-              loading ? 'bg-gray-400' : 'bg-purple-500 hover:bg-purple-600'
+              loading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
             }`}
           >
             {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
@@ -103,9 +118,9 @@ const AdvisorLoginForm: React.FC = () => {
   );
 };
 
-// หน้า Login สำหรับพนักงานที่ปรึกษา
-const AdvisorLoginPage: React.FC = () => {
-  return <AdvisorLoginForm />;
+// หน้า Login สำหรับนิสิต
+const StudentLoginPage: React.FC = () => {
+  return <LDAPLoginForm userType="student" />;
 };
 
-export default AdvisorLoginPage;
+export default StudentLoginPage;

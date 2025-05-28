@@ -1,38 +1,39 @@
-// app/login/page.tsx
-"use client";
+import React from 'react';
+import { useRouter } from 'next/router';
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+const LoginPage = () => {
+  const router = useRouter();
 
-export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-md bg-white shadow-md rounded p-6 mb-4">
-        <h1 className="text-2xl font-semibold text-center mb-6">เข้าสู่ระบบ</h1>
+      <div className="w-full max-w-md bg-white shadow-md rounded-lg p-8">
+        <h1 className="text-2xl font-semibold text-center mb-6">ระบบสหกิจศึกษา</h1>
         
         <div className="space-y-4">
-          <Link 
-            href="/login/student-teacher" 
-            className="block w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded text-center"
+          <button 
+            onClick={() => router.push('/login/student')}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded transition duration-200"
           >
-            นิสิตและอาจารย์
-          </Link>
+            นิสิต
+          </button>
           
-          <Link 
-            href="/login/advisor" 
-            className="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded text-center"
+          <button 
+            onClick={() => router.push('/login/teacher')}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded transition duration-200"
+          >
+            อาจารย์
+          </button>
+          
+          <button 
+            onClick={() => router.push('/login/advisor')}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded transition duration-200"
           >
             พนักงานที่ปรึกษา
-          </Link>
-        </div>
-        
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <Link href="/test-login" className="text-blue-500 hover:underline">
-            เข้าสู่ระบบทดสอบ
-          </Link>
+          </button>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default LoginPage;
