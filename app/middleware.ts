@@ -1,21 +1,26 @@
 // app/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import jwt from "jsonwebtoken";
+
+const secret = process.env.SECRET!;
 
 // Middleware to check authentication
 export function middleware(request: NextRequest) {
   // ตัวแปรเพื่อเก็บสถานะการตรวจสอบ
   let isAuthenticated = false;
   
-  // ตรวจสอบ JWT Token (กรณีล็อกอินปกติ)
+  // ตรวจสอบ JWT Token
   const token = request.cookies.get("token")?.value;
   if (token) {
     try {
-      // สำหรับการทดสอบเราแค่ตรวจว่ามีโทเคนหรือไม่
-      // ในการใช้งานจริงคุณต้องเพิ่มการตรวจสอบความถูกต้องของโทเคน:
-      // const decoded = jwt.verify(token, process.env.SECRET!);
-      isAuthenticated = true;
+      // ตรวจสอบความถูกต้องของโทเคน
+      const decoded = jwt.verify(token, secret);
+      if (decoded) {
+        isAuthenticated = true;
+      }
     } catch (error) {
+      console.error("Token verification failed:", error);
       isAuthenticated = false;
     }
   }
@@ -30,18 +35,21 @@ export function middleware(request: NextRequest) {
         isAuthenticated = true;
       }
     } catch (error) {
+      console.error("Test user data parsing failed:", error);
       isAuthenticated = false;
     }
   }
   
   // ตรวจสอบว่าเป็นหน้าสาธารณะหรือไม่
   const isPublicPage = 
+    request.nextUrl.pathname === "/" ||
     request.nextUrl.pathname === "/login" || 
     request.nextUrl.pathname === "/test-login" || 
     request.nextUrl.pathname === "/admin-login" ||
     request.nextUrl.pathname.startsWith("/api/") ||
     request.nextUrl.pathname.startsWith("/_next/") ||
-    request.nextUrl.pathname.startsWith("/public/");
+    request.nextUrl.pathname.startsWith("/public/") ||
+    request.nextUrl.pathname.startsWith("/favicon");
   
   // ถ้าผู้ใช้ไม่ได้ล็อกอินและไม่ได้อยู่ในหน้าสาธารณะให้เปลี่ยนเส้นทางไปที่หน้าล็อกอิน
   if (!isAuthenticated && !isPublicPage) {
@@ -54,7 +62,7 @@ export function middleware(request: NextRequest) {
     request.nextUrl.pathname === "/test-login" || 
     request.nextUrl.pathname === "/admin-login"
   )) {
-    return NextResponse.redirect(new URL("/home", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
   
   // ในกรณีอื่นๆ ให้ดำเนินการต่อ

@@ -30,6 +30,8 @@ import Link from "next/link";
 const Coop04Page = () => {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [training, setTraining] = useState<any>(null);
+  const [currentSemester, setCurrentSemester] = useState<any>(null);
   
   // สร้าง state สำหรับฟอร์ม
   const [accommodationType, setAccommodationType] = useState<string>("");
@@ -63,6 +65,47 @@ const Coop04Page = () => {
     }
   }, [router]);
 
+  // ดึงข้อมูลภาคการศึกษาปัจจุบัน
+  useEffect(() => {
+    const fetchCurrentSemester = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACK_URL}/semester/current`);
+        if (!response.ok) throw new Error("Failed to fetch current semester");
+        const data = await response.json();
+        setCurrentSemester(data);
+      } catch (error) {
+        console.error("Error fetching current semester:", error);
+      }
+    };
+    fetchCurrentSemester();
+  }, []);
+
+  // ดึงข้อมูล training ของ user ปัจจุบัน
+  useEffect(() => {
+    if (user && currentSemester) {
+      const fetchTraining = async () => {
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACK_URL}/training/user/${user.id}-${currentSemester.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Training data from API:", data);
+            if (data && data.length > 0) {
+              console.log("Setting training:", data[0]);
+              setTraining(data[0]); // เอาข้อมูลการฝึกงานแรก
+            } else {
+              console.log("No training data found for user");
+            }
+          } else {
+            console.log("Failed to fetch training data:", response.status);
+          }
+        } catch (error) {
+          console.error("Error fetching training data:", error);
+        }
+      };
+      fetchTraining();
+    }
+  }, [user, currentSemester]);
+
   // ฟังก์ชันบันทึกข้อมูล
   const handleSave = () => {
     // สร้างข้อมูลที่จะส่งไปยัง API
@@ -93,7 +136,7 @@ const Coop04Page = () => {
     alert("บันทึกข้อมูลเรียบร้อยแล้ว");
     
     // กลับไปยังหน้าหลัก
-    router.push("/home");
+    router.push("/");
   };
 
   // ฟังก์ชันยกเลิก
@@ -124,7 +167,7 @@ const Coop04Page = () => {
           <IconButton edge="start" color="inherit" onClick={() => router.back()}>
             <ArrowBack />
           </IconButton>
-          <IconButton color="inherit" onClick={() => router.push("/home")}>
+          <IconButton color="inherit" onClick={() => router.push("/")}>
             <Home />
           </IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1, ml: 2 }}>
@@ -136,7 +179,7 @@ const Coop04Page = () => {
       {/* Breadcrumbs */}
       <Box p={2}>
         <Breadcrumbs>
-          <Link href="/home" style={{ textDecoration: 'none', color: 'inherit' }}>หน้าหลัก</Link>
+          <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>หน้าหลัก</Link>
           <Typography color="text.primary">แบบฟอร์มที่พัก</Typography>
         </Breadcrumbs>
       </Box>
@@ -195,6 +238,70 @@ const Coop04Page = () => {
                 />
               </Grid>
             </Grid>
+          </Box>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* ข้อมูลสถานประกอบการ */}
+          <Box mb={4}>
+            <Typography variant="h6" gutterBottom>
+              ข้อมูลสถานประกอบการ
+            </Typography>
+            {training && training.job && training.job.entrepreneur ? (
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="ชื่อบริษัท (ไทย)"
+                    value={training.job.entrepreneur.nameTh || ""}
+                    fullWidth
+                    margin="normal"
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="ชื่อบริษัท (อังกฤษ)"
+                    value={training.job.entrepreneur.nameEn || ""}
+                    fullWidth
+                    margin="normal"
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="ที่อยู่บริษัท"
+                    value={training.job.entrepreneur.address || ""}
+                    fullWidth
+                    margin="normal"
+                    InputProps={{ readOnly: true }}
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="โทรศัพท์"
+                    value={training.job.entrepreneur.tel || ""}
+                    fullWidth
+                    margin="normal"
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="อีเมล"
+                    value={training.job.entrepreneur.email || ""}
+                    fullWidth
+                    margin="normal"
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+              </Grid>
+            ) : (
+              <Typography color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                ไม่พบข้อมูลการฝึกงาน กรุณาลงทะเบียนการฝึกงานก่อน
+              </Typography>
+            )}
           </Box>
 
           <Divider sx={{ my: 3 }} />

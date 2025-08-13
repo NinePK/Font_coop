@@ -39,7 +39,7 @@ const AdminLoginPage = () => {
               // เก็บข้อมูลผู้ใช้ใน Cookie
               document.cookie = `user_data=${JSON.stringify(userData)}; path=/; max-age=86400`;
               // Redirect ไปที่หน้า Home
-              router.push("/home");
+              router.push("/");
             } else {
               setErrorMessage("User not found.");
             }

@@ -2,7 +2,31 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // นำเข้า Link จาก Next.js
+import Link from "next/link";
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Grid,
+  Button,
+  Avatar,
+  AppBar,
+  Toolbar,
+  IconButton,
+  Container,
+  Fade,
+  Paper,
+  Chip,
+} from "@mui/material";
+import {
+  Description,
+  Assignment,
+  Person,
+  School,
+  ExitToApp,
+  Home,
+} from "@mui/icons-material";
 
 const HomePage = () => {
   const [user, setUser] = useState<any>(null);
@@ -24,41 +48,171 @@ const HomePage = () => {
     }
   }, [router]);
 
+  const handleLogout = () => {
+    // ลบ cookie และส่งกลับไปหน้า login
+    document.cookie = "user_data=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    router.push("/login");
+  };
+
   if (!user) {
-    return <div>Loading...</div>; // หากยังไม่โหลดข้อมูลผู้ใช้, ให้แสดงข้อความ Loading...
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+        bgcolor="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+      >
+        <Typography variant="h6" color="primary">
+          กำลังโหลด...
+        </Typography>
+      </Box>
+    );
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">Welcome to the Home Page</h1>
-      <div className="mt-4">
-        <p><strong>Username:</strong> {user.username}</p>
-        <p><strong>Full Name:</strong> {user.fname} {user.sname}</p>
-        <p><strong>English Name:</strong> {user.fnameEn} {user.snameEn}</p>
-        <p><strong>Major:</strong> {user.major.majorTh}</p> {/* majorTh */}
-        <p><strong>Degree:</strong> {user.major.degree}</p> {/* degree */}
-        <p><strong>Faculty:</strong> {user.major.faculty.facultyTh}</p> {/* facultyTh */}
-      </div>
+    <Box sx={{ flexGrow: 1, minHeight: "100vh", bgcolor: "#f5f5f5" }}>
+      {/* Header/Navbar */}
+      <AppBar position="static" sx={{ bgcolor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+        <Toolbar>
+          <Home sx={{ mr: 2 }} />
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            ระบบสหกิจศึกษา - มหาวิทยาลัยพะเยา
+          </Typography>
+          <IconButton color="inherit" onClick={handleLogout}>
+            <ExitToApp />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
 
-      {/* ปุ่มไปยังหน้า /reportDaily */}
-      <div className="mt-6">
-        <button
-          onClick={() => router.push("/reportDaily")}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Go to Daily Report
-        </button>
-      </div>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        {/* Welcome Section */}
+        <Fade in={true} timeout={800}>
+          <Paper
+            elevation={3}
+            sx={{
+              p: 4,
+              mb: 4,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              borderRadius: 3,
+            }}
+          >
+            <Grid container spacing={3} alignItems="center">
+              <Grid item>
+                <Avatar
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    bgcolor: "rgba(255,255,255,0.2)",
+                    fontSize: "2rem",
+                  }}
+                >
+                  <Person fontSize="large" />
+                </Avatar>
+              </Grid>
+              <Grid item xs>
+                <Typography variant="h4" gutterBottom>
+                  ยินดีต้อนรับ, {user.fname} {user.sname}
+                </Typography>
+                <Typography variant="h6" sx={{ opacity: 0.9 }}>
+                  {user.fnameEn} {user.snameEn}
+                </Typography>
+                <Chip
+                  label={`รหัสนิสิต: ${user.username}`}
+                  sx={{
+                    mt: 1,
+                    bgcolor: "rgba(255,255,255,0.2)",
+                    color: "white",
+                  }}
+                />
+              </Grid>
+            </Grid>
+          </Paper>
+        </Fade>
 
-      {/* ลิงค์ไปยังหน้า /documents */}
-      <div className="mt-6">
-        <Link href="/documents">
-          <button className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-            Go to Documents
-          </button>
-        </Link>
-      </div>
-    </div>
+        <Grid container spacing={4}>
+          {/* User Information Card */}
+          <Grid item xs={12} md={6}>
+            <Fade in={true} timeout={1000}>
+              <Card elevation={3} sx={{ height: "100%", borderRadius: 2 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box display="flex" alignItems="center" mb={2}>
+                    <School sx={{ mr: 1, color: "primary.main" }} />
+                    <Typography variant="h6" color="primary.main">
+                      ข้อมูลการศึกษา
+                    </Typography>
+                  </Box>
+                  <Box sx={{ pl: 4 }}>
+                    <Typography variant="body1" sx={{ mb: 1 }}>
+                      <strong>คณะ:</strong> {user.major?.faculty?.facultyTh}
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 1 }}>
+                      <strong>สาขาวิชา:</strong> {user.major?.majorTh}
+                    </Typography>
+                    <Typography variant="body1">
+                      <strong>หลักสูตร:</strong> {user.major?.degree}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Fade>
+          </Grid>
+
+          {/* Quick Actions Card */}
+          <Grid item xs={12} md={6}>
+            <Fade in={true} timeout={1200}>
+              <Card elevation={3} sx={{ height: "100%", borderRadius: 2 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box display="flex" alignItems="center" mb={2}>
+                    <Assignment sx={{ mr: 1, color: "primary.main" }} />
+                    <Typography variant="h6" color="primary.main">
+                      เมนูหลัก
+                    </Typography>
+                  </Box>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        color="primary"
+                        startIcon={<Description />}
+                        onClick={() => router.push("/documents")}
+                        sx={{
+                          py: 1.5,
+                          borderRadius: 2,
+                          textTransform: "none",
+                          fontSize: "1rem",
+                        }}
+                      >
+                        เอกสารสหกิจศึกษา
+                      </Button>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        color="secondary"
+                        startIcon={<Assignment />}
+                        onClick={() => router.push("/reportWeekly")}
+                        sx={{
+                          py: 1.5,
+                          borderRadius: 2,
+                          textTransform: "none",
+                          fontSize: "1rem",
+                        }}
+                      >
+                        รายงานประจำสัปดาห์
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Fade>
+          </Grid>
+        </Grid>
+      </Container>
+    </Box>
   );
 };
 

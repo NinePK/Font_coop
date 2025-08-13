@@ -1,10 +1,9 @@
-// app/api/auth/advisor/route.ts
+// app/api/advisor/route.ts
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 
 const secretKey = process.env.JWT_SECRET || 'your-secret-key';
-const backendUrl = process.env.BACKEND_URL || 'http://localhost:6008';
+const backendUrl = process.env.NEXT_PUBLIC_BACK_URL || 'http://localhost:6008';
 
 export async function POST(req: Request) {
   try {
@@ -18,8 +17,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // ค้นหาข้อมูลพนักงานที่ปรึกษาด้วยอีเมล
-    // สร้างหรือปรับ API endpoint ที่ backend ให้รองรับการค้นหาด้วยอีเมล
+    // เรียก API ของ backend เพื่อตรวจสอบข้อมูลพนักงานที่ปรึกษา
     const response = await fetch(`${backendUrl}/incharge/auth`, {
       method: 'POST',
       headers: {
@@ -46,7 +44,8 @@ export async function POST(req: Request) {
       email: email,
       role: 'advisor',
       entrepreneurId: data.entrepreneur_id,
-      position: data.position
+      position: data.position,
+      entrepreneur: data.entrepreneur
     };
 
     // สร้าง JWT token
