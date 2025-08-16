@@ -32,6 +32,9 @@ const Coop04Page = () => {
   const [user, setUser] = useState<any>(null);
   const [training, setTraining] = useState<any>(null);
   const [currentSemester, setCurrentSemester] = useState<any>(null);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [existingData, setExistingData] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
   
   // สร้าง state สำหรับฟอร์ม
   const [accommodationType, setAccommodationType] = useState<string>("");
@@ -41,6 +44,13 @@ const Coop04Page = () => {
   const [subdistrict, setSubdistrict] = useState<string>("");
   const [district, setDistrict] = useState<string>("");
   const [province, setProvince] = useState<string>("");
+  
+  // State สำหรับ dropdown ข้อมูลที่อยู่
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [amphurs, setAmphurs] = useState<any[]>([]);
+  const [tambons, setTambons] = useState<any[]>([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string>("");
+  const [selectedAmphurId, setSelectedAmphurId] = useState<string>("");
   const [postalCode, setPostalCode] = useState<string>("");
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [emergencyContact, setEmergencyContact] = useState<string>("");
@@ -106,37 +116,219 @@ const Coop04Page = () => {
     }
   }, [user, currentSemester]);
 
-  // ฟังก์ชันบันทึกข้อมูล
-  const handleSave = () => {
-    // สร้างข้อมูลที่จะส่งไปยัง API
-    const formData = {
-      userId: user?.id,
-      accommodationType,
-      accommodationName,
-      roomNumber,
-      address,
-      subdistrict,
-      district,
-      province,
-      postalCode,
-      phoneNumber,
-      emergencyContact,
-      emergencyPhone,
-      emergencyRelation,
-      travelMethod,
-      travelDetails,
-      distanceKm,
-      travelTime,
-    };
+  // ดึงข้อมูล COOP-04 ที่เคยบันทึกไว้
+  useEffect(() => {
+    if (user) {
+      const fetchExistingData = async () => {
+        try {
+          const response = await fetch(`/api/coop04-accommodation?userId=${user.id}`);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.data) {
+              console.log("Found existing COOP-04 data:", result.data);
+              
+              // ข้อมูลจาก backend อยู่ใน result.data โดยตรง
+              const data = result.data;
+              
+              setExistingData(result.data);
+              setIsEditing(true);
+              
+              // โหลดข้อมูลเดิมในฟอร์ม
+              setAccommodationType(data.accommodationType || "");
+              setAccommodationName(data.accommodationName || "");
+              setRoomNumber(data.roomNumber || "");
+              setAddress(data.address || "");
+              setSubdistrict(data.subdistrict || "");
+              setDistrict(data.district || "");
+              setProvince(data.province || "");
+              setPostalCode(data.postalCode || "");
+              setPhoneNumber(data.phoneNumber || "");
+              setEmergencyContact(data.emergencyContact || "");
+              setEmergencyPhone(data.emergencyPhone || "");
+              setEmergencyRelation(data.emergencyRelation || "");
+              setTravelMethod(data.travelMethod || "");
+              setTravelDetails(data.travelDetails || "");
+              setDistanceKm(data.distanceKm ? data.distanceKm.toString() : "");
+              setTravelTime(data.travelTime ? data.travelTime.toString() : "");
+              
+              // หาจังหวัด อำเภอ ตำบลที่ตรงกัน (รอให้ข้อมูลโหลดเสร็จก่อน)
+              if (data.province) {
+                setTimeout(() => {
+                  const foundProvince = provinces.find(p => p.value === data.province);
+                  if (foundProvince) {
+                    setSelectedProvinceId(foundProvince.id.toString());
+                  }
+                }, 1000);
+              }
+            } else {
+              console.log("No existing COOP-04 data found");
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching existing COOP-04 data:", error);
+        }
+      };
+      fetchExistingData();
+    }
+  }, [user]);
 
-    // จำลองการส่งข้อมูลไปยัง API
-    console.log("บันทึกข้อมูล:", formData);
-    
-    // แสดงข้อความแจ้งเตือน
-    alert("บันทึกข้อมูลเรียบร้อยแล้ว");
-    
-    // กลับไปยังหน้าหลัก
-    router.push("/");
+  // ดึงข้อมูลจังหวัดทั้งหมด
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACK_URL}/province`);
+        if (response.ok) {
+          const data = await response.json();
+          setProvinces(data);
+        }
+      } catch (error) {
+        console.error("Error fetching provinces:", error);
+      }
+    };
+    fetchProvinces();
+  }, []);
+
+  // ดึงข้อมูลอำเภอเมื่อเลือกจังหวัด
+  useEffect(() => {
+    if (selectedProvinceId) {
+      const fetchAmphurs = async () => {
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACK_URL}/amphur?province_id=${selectedProvinceId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setAmphurs(data);
+          }
+        } catch (error) {
+          console.error("Error fetching amphurs:", error);
+        }
+      };
+      fetchAmphurs();
+      // Reset อำเภอและตำบลเมื่อเปลี่ยนจังหวัด
+      setSelectedAmphurId("");
+      setTambons([]);
+      setDistrict("");
+      setSubdistrict("");
+    }
+  }, [selectedProvinceId]);
+
+  // ดึงข้อมูลตำบลเมื่อเลือกอำเภอ
+  useEffect(() => {
+    if (selectedAmphurId) {
+      const fetchTambons = async () => {
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACK_URL}/tambon?amphur_id=${selectedAmphurId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setTambons(data);
+          }
+        } catch (error) {
+          console.error("Error fetching tambons:", error);
+        }
+      };
+      fetchTambons();
+      // Reset ตำบลเมื่อเปลี่ยนอำเภอ
+      setSubdistrict("");
+    }
+  }, [selectedAmphurId]);
+
+  // ฟังก์ชันจัดการการเปลี่ยนแปลงจังหวัด
+  const handleProvinceChange = (provinceId: string) => {
+    setSelectedProvinceId(provinceId);
+    const selectedProvince = provinces.find(p => p.id.toString() === provinceId);
+    if (selectedProvince) {
+      setProvince(selectedProvince.value);
+    }
+  };
+
+  // ฟังก์ชันจัดการการเปลี่ยนแปลงอำเภอ
+  const handleAmphurChange = (amphurId: string) => {
+    setSelectedAmphurId(amphurId);
+    const selectedAmphur = amphurs.find(a => a.id.toString() === amphurId);
+    if (selectedAmphur) {
+      setDistrict(selectedAmphur.value);
+    }
+  };
+
+  // ฟังก์ชันจัดการการเปลี่ยนแปลงตำบล
+  const handleTambonChange = (tambonValue: string) => {
+    setSubdistrict(tambonValue);
+  };
+
+  // ฟังก์ชันบันทึกข้อมูล
+  const handleSave = async () => {
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (!accommodationType || !accommodationName) {
+      alert("กรุณากรอกข้อมูลที่พักให้ครบถ้วน");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // สร้างข้อมูลที่จะส่งไปยัง API
+      const formData = {
+        userId: user?.id,
+        trainingId: training?.id || null,
+        accommodationType,
+        accommodationName,
+        roomNumber,
+        address,
+        subdistrict,
+        district,
+        province,
+        postalCode,
+        phoneNumber,
+        emergencyContact,
+        emergencyPhone,
+        emergencyRelation,
+        travelMethod,
+        travelDetails,
+        distanceKm,
+        travelTime,
+      };
+
+      let response;
+      if (isEditing && existingData) {
+        // อัพเดทข้อมูลเดิม
+        console.log("อัพเดทข้อมูล COOP-04:", formData);
+        console.log("Existing data structure:", existingData);
+        console.log("ID ที่จะส่งไป:", existingData.id);
+        response = await fetch('/api/coop04-accommodation', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...formData, id: existingData.id }),
+        });
+      } else {
+        // บันทึกข้อมูลใหม่
+        console.log("บันทึกข้อมูล COOP-04 ใหม่:", formData);
+        response = await fetch('/api/coop04-accommodation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('บันทึกข้อมูลสำเร็จ:', result);
+      
+      alert("บันทึกข้อมูลเรียบร้อยแล้ว");
+      
+      // กลับไปยังหน้าหลัก
+      router.push("/");
+    } catch (error) {
+      console.error('Error saving COOP-04 data:', error);
+      alert(`เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ฟังก์ชันยกเลิก
@@ -190,7 +382,7 @@ const Coop04Page = () => {
             แบบแจ้งรายละเอียดที่พักระหว่างการปฏิบัติงานสหกิจศึกษา
           </Typography>
           <Typography variant="subtitle1" align="center" color="textSecondary" gutterBottom>
-            Coop-04
+            Coop-04 {isEditing ? '(แก้ไขข้อมูล)' : '(บันทึกใหม่)'}
           </Typography>
 
           <Divider sx={{ my: 3 }} />
@@ -362,31 +554,55 @@ const Coop04Page = () => {
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
-                  label="ตำบล/แขวง"
-                  value={subdistrict}
-                  onChange={(e) => setSubdistrict(e.target.value)}
-                  fullWidth
-                  margin="normal"
-                />
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="province-label">จังหวัด</InputLabel>
+                  <Select
+                    labelId="province-label"
+                    value={selectedProvinceId}
+                    onChange={(e) => handleProvinceChange(e.target.value)}
+                    label="จังหวัด"
+                  >
+                    {provinces.map((province) => (
+                      <MenuItem key={province.id} value={province.id.toString()}>
+                        {province.value}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
-                  label="อำเภอ/เขต"
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  fullWidth
-                  margin="normal"
-                />
+                <FormControl fullWidth margin="normal" disabled={!selectedProvinceId}>
+                  <InputLabel id="amphur-label">อำเภอ/เขต</InputLabel>
+                  <Select
+                    labelId="amphur-label"
+                    value={selectedAmphurId}
+                    onChange={(e) => handleAmphurChange(e.target.value)}
+                    label="อำเภอ/เขต"
+                  >
+                    {amphurs.map((amphur) => (
+                      <MenuItem key={amphur.id} value={amphur.id.toString()}>
+                        {amphur.value}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
-                  label="จังหวัด"
-                  value={province}
-                  onChange={(e) => setProvince(e.target.value)}
-                  fullWidth
-                  margin="normal"
-                />
+                <FormControl fullWidth margin="normal" disabled={!selectedAmphurId}>
+                  <InputLabel id="tambon-label">ตำบล/แขวง</InputLabel>
+                  <Select
+                    labelId="tambon-label"
+                    value={subdistrict}
+                    onChange={(e) => handleTambonChange(e.target.value)}
+                    label="ตำบล/แขวง"
+                  >
+                    {tambons.map((tambon) => (
+                      <MenuItem key={tambon.id} value={tambon.value}>
+                        {tambon.value}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
@@ -519,8 +735,9 @@ const Coop04Page = () => {
               startIcon={<Save />}
               onClick={handleSave}
               size="large"
+              disabled={saving}
             >
-              บันทึกข้อมูล
+              {saving ? 'กำลังบันทึก...' : (isEditing ? 'อัพเดทข้อมูล' : 'บันทึกข้อมูล')}
             </Button>
             <Button
               variant="outlined"

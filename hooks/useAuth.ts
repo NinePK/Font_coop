@@ -34,45 +34,46 @@ export const useAuth = () => {
     router.push("/login");
   };
 
-  const requireAuth = (redirectTo: string = "/login") => {
+  // Auto redirect effects - จะทำงานอัตโนมัติในหน้าที่เรียกใช้
+  useEffect(() => {
+    // Auto redirect for auth check
     if (!loading && !user) {
-      router.push(redirectTo);
+      // Only redirect if we're not already on login page
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        router.push("/login");
+      }
     }
+  }, [loading, user, router]);
+
+  const checkAuth = () => {
+    return !loading && !!user;
   };
 
-  const requireRole = (role: UserRole, redirectTo: string = "/") => {
-    if (!loading && (!user || !hasRole(user, role))) {
-      router.push(redirectTo);
-    }
+  const checkRole = (role: UserRole) => {
+    return !loading && user && hasRole(user, role);
   };
 
-  const requireTeacher = (redirectTo: string = "/") => {
-    if (!loading && !canAccessTeacherRoutes(user)) {
-      router.push(redirectTo);
-    }
+  const checkTeacher = () => {
+    return !loading && canAccessTeacherRoutes(user);
   };
 
-  const requireStudent = (redirectTo: string = "/") => {
-    if (!loading && !canAccessStudentRoutes(user)) {
-      router.push(redirectTo);
-    }
+  const checkStudent = () => {
+    return !loading && canAccessStudentRoutes(user);
   };
 
-  const requireAdmin = (redirectTo: string = "/") => {
-    if (!loading && !canAccessAdminRoutes(user)) {
-      router.push(redirectTo);
-    }
+  const checkAdmin = () => {
+    return !loading && canAccessAdminRoutes(user);
   };
 
   return {
     user,
     loading,
     logout,
-    requireAuth,
-    requireRole,
-    requireTeacher,
-    requireStudent,
-    requireAdmin,
+    checkAuth,
+    checkRole,
+    checkTeacher,
+    checkStudent,
+    checkAdmin,
     
     // Role checking functions
     isStudent: isStudent(user),

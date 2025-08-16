@@ -30,12 +30,16 @@ import {
   Business,
   Assignment,
   Visibility,
+  Description,
+  Timeline,
+  Assessment,
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface Student {
   id: number;
+  userId: number;
   user: {
     id: number;
     fname: string;
@@ -56,17 +60,16 @@ interface Student {
   };
   startdate: string;
   enddate: string;
-  status: string;
+  status: number;
 }
 
 const TeacherStudents = () => {
-  const { user, loading, requireTeacher } = useAuth();
+  const { user, loading, checkTeacher } = useAuth();
   const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
 
-  // ตรวจสอบสิทธิ์การเข้าถึง
-  requireTeacher();
+  // การตรวจสอบสิทธิ์จะทำงานอัตโนมัติใน useAuth hook แล้ว
 
   // ดึงข้อมูลนิสิตที่อาจารย์ดูแล
   useEffect(() => {
@@ -78,84 +81,50 @@ const TeacherStudents = () => {
   const fetchStudents = async () => {
     try {
       setLoadingStudents(true);
-      // TODO: เรียก API เพื่อดึงข้อมูลนิสิตที่อาจารย์ดูแล
-      // const response = await fetch(`${process.env.NEXT_PUBLIC_BACK_URL}/teacher/students/${user?.id}`);
-      // const data = await response.json();
-      // setStudents(data);
       
-      // Mock data สำหรับตัวอย่าง
-      const mockStudents: Student[] = [
-        {
-          id: 1,
-          user: {
-            id: 1,
-            fname: "สมชาย",
-            sname: "ใจดี",
-            username: "64123001",
-            major: {
-              majorTh: "วิทยาการคมพิวเตอร์",
-              faculty: {
-                facultyTh: "เทคโนโลยีสารสนเทศและการสื่อสาร"
-              }
-            }
-          },
-          job: {
-            name: "นักพัฒนาเว็บไซต์",
-            entrepreneur: {
-              nameTh: "บริษัท เทคโนโลยี จำกัด"
-            }
-          },
-          startdate: "2024-06-01",
-          enddate: "2024-10-31",
-          status: "active"
-        },
-        {
-          id: 2,
-          user: {
-            id: 2,
-            fname: "สมหญิง",
-            sname: "รักเรียน",
-            username: "64123002",
-            major: {
-              majorTh: "วิทยาการคมพิวเตอร์",
-              faculty: {
-                facultyTh: "เทคโนโลยีสารสนเทศและการสื่อสาร"
-              }
-            }
-          },
-          job: {
-            name: "นักวิเคราะห์ระบบ",
-            entrepreneur: {
-              nameTh: "บริษัท ซอฟต์แวร์ จำกัด"
-            }
-          },
-          startdate: "2024-06-15",
-          enddate: "2024-11-15",
-          status: "active"
-        }
-      ];
-      setStudents(mockStudents);
+      const backUrl = process.env.NEXT_PUBLIC_BACK_URL || 'http://localhost:6008';
+      const apiUrl = `${backUrl}/teacher/students/${user?.id}`;
+      
+      console.log('Fetching from URL:', apiUrl);
+      console.log('User ID:', user?.id);
+      
+      const response = await fetch(apiUrl);
+      
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Response error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Fetched data:', data);
+      setStudents(data);
       setLoadingStudents(false);
     } catch (error) {
       console.error('Error fetching students:', error);
       setLoadingStudents(false);
+      // แสดงข้อมูลว่างเมื่อเกิดข้อผิดพลาด
+      setStudents([]);
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: number) => {
     switch (status) {
-      case 'active': return 'success';
-      case 'completed': return 'primary';
-      case 'pending': return 'warning';
+      case 1: return 'success';
+      case 2: return 'primary';
+      case 0: return 'warning';
       default: return 'default';
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: number) => {
     switch (status) {
-      case 'active': return 'กำลังฝึกงาน';
-      case 'completed': return 'เสร็จสิ้น';
-      case 'pending': return 'รอเริ่ม';
+      case 1: return 'กำลังฝึกงาน';
+      case 2: return 'เสร็จสิ้น';
+      case 0: return 'รอเริ่ม';
       default: return 'ไม่ทราบ';
     }
   };
@@ -207,7 +176,7 @@ const TeacherStudents = () => {
                 จำนวน {students.length} คน
               </Typography>
               <Chip
-                label={`${students.filter(s => s.status === 'active').length} คนกำลังฝึกงาน`}
+                label={`${students.filter(s => s.status === 1).length} คนกำลังฝึกงาน`}
                 color="success"
                 sx={{ mt: 1 }}
               />
@@ -240,7 +209,7 @@ const TeacherStudents = () => {
                       <TableCell><strong>ตำแหน่ง</strong></TableCell>
                       <TableCell><strong>วันที่เริ่ม-สิ้นสุด</strong></TableCell>
                       <TableCell><strong>สถานะ</strong></TableCell>
-                      <TableCell><strong>การจัดการ</strong></TableCell>
+                      <TableCell><strong>เอกสาร & รายงาน</strong></TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -296,23 +265,51 @@ const TeacherStudents = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<Visibility />}
-                            onClick={() => router.push(`/teacher/students/${student.id}`)}
-                            sx={{ mr: 1 }}
-                          >
-                            ดูรายละเอียด
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<Assignment />}
-                            onClick={() => router.push(`/teacher/reports/${student.id}`)}
-                          >
-                            รายงาน
-                          </Button>
+                          <Box display="flex" flexDirection="column" gap={1}>
+                            <Box display="flex" gap={1}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<Visibility />}
+                                onClick={() => router.push(`/teacher/students/${student.id}`)}
+                                fullWidth
+                              >
+                                ข้อมูลนิสิต
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<Description />}
+                                onClick={() => router.push(`/teacher/documents/${student.id}`)}
+                                fullWidth
+                                color="secondary"
+                              >
+                                เอกสาร
+                              </Button>
+                            </Box>
+                            <Box display="flex" gap={1}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<Timeline />}
+                                onClick={() => router.push(`/teacher/reports/${student.id}`)}
+                                fullWidth
+                                color="success"
+                              >
+                                รายงานสัปดาห์
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<Assessment />}
+                                onClick={() => router.push(`/teacher/evaluation/${student.id}`)}
+                                fullWidth
+                                color="warning"
+                              >
+                                ประเมินผล
+                              </Button>
+                            </Box>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -36,7 +36,7 @@ import {
 const DocumentsPage = () => {
   const router = useRouter();
 
-  // ข้อมูลเอกสารพร้อมคำอธิบายและไอคอน
+  // ข้อมูลเอกสารที่ใช้งานจริง (เฉพาะที่สร้างแล้ว)
   const documents = [
     {
       number: "01",
@@ -45,22 +45,7 @@ const DocumentsPage = () => {
       icon: <Assignment />,
       color: "primary",
       category: "สมัคร",
-    },
-    {
-      number: "02",
-      title: "แบบฟอร์มเสนองานสหกิจศึกษา",
-      description: "เสนอตำแหน่งงานสำหรับการฝึกงาน",
-      icon: <Work />,
-      color: "secondary",
-      category: "งาน",
-    },
-    {
-      number: "03",
-      title: "แบบฟอร์มบันทึกการนิเทศงาน",
-      description: "บันทึกการเยี่ยมนิเทศโดยอาจารย์",
-      icon: <Person />,
-      color: "success",
-      category: "นิเทศ",
+      available: true,
     },
     {
       number: "04",
@@ -69,14 +54,7 @@ const DocumentsPage = () => {
       icon: <Hotel />,
       color: "warning",
       category: "ที่พัก",
-    },
-    {
-      number: "05",
-      title: "แบบฟอร์มแจ้งรายละเอียดงาน",
-      description: "รายละเอียดตำแหน่งงานและพนักงานที่ปรึกษา",
-      icon: <Business />,
-      color: "info",
-      category: "งาน",
+      available: true,
     },
     {
       number: "06",
@@ -85,6 +63,7 @@ const DocumentsPage = () => {
       icon: <Schedule />,
       color: "primary",
       category: "แผนงาน",
+      available: true,
     },
     {
       number: "07",
@@ -93,14 +72,34 @@ const DocumentsPage = () => {
       icon: <Description />,
       color: "secondary",
       category: "รายงาน",
+      available: true,
     },
     {
-      number: "08",
-      title: "แบบฟอร์มประเมินผลนิสิต",
-      description: "การประเมินผลการทำงานของนิสิต",
+      number: "10",
+      title: "แบบฟอร์มยืนยันส่งรายงานการปฏิบัติงาน",
+      description: "ยืนยันส่งรายงาน Work Term Report",
       icon: <Assessment />,
       color: "success",
+      category: "ยืนยัน",
+      available: true,
+    },
+    {
+      number: "11",
+      title: "แบบฟอร์มรายละเอียดการปฏิบัติงาน",
+      description: "รายละเอียดเกี่ยวกับการปฏิบัติงาน (หลังกลับจากสถานประกอบการ)",
+      icon: <Work />,
+      color: "info",
+      category: "รายงาน",
+      available: true,
+    },
+    {
+      number: "12",
+      title: "แบบฟอร์มประเมินตนเองในการปฏิบัติงาน",
+      description: "การประเมินตนเองของนิสิต 7 หมวดการประเมิน",
+      icon: <Person />,
+      color: "warning",
       category: "ประเมิน",
+      available: true,
     },
   ];
 
@@ -219,45 +218,6 @@ const DocumentsPage = () => {
           ))}
         </Grid>
 
-        {/* Additional documents (09-14) */}
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          {Array.from({ length: 6 }, (_, index) => {
-            const docNumber = (index + 9).toString().padStart(2, "0");
-            return (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
-                <Card 
-                  elevation={2} 
-                  sx={{ 
-                    height: "100%",
-                    borderRadius: 3,
-                    opacity: 0.8,
-                    "&:hover": {
-                      opacity: 1,
-                      transform: "translateY(-2px)",
-                    },
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <CardContent>
-                    <Typography variant="h6" color="primary.main" gutterBottom>
-                      COOP-{docNumber}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      เอกสารเพิ่มเติม
-                    </Typography>
-                  </CardContent>
-                  <CardActions>
-                    <Link href={`/documents/coop${docNumber}`} style={{ width: "100%" }}>
-                      <Button fullWidth variant="outlined" sx={{ textTransform: "none" }}>
-                        เปิดเอกสาร
-                      </Button>
-                    </Link>
-                  </CardActions>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
       </Container>
       </Box>
     </StudentGuard>

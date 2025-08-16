@@ -36,7 +36,7 @@ interface DashboardStats {
 }
 
 const TeacherDashboard = () => {
-  const { user, loading, requireTeacher } = useAuth();
+  const { user, loading, checkTeacher } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
@@ -45,8 +45,12 @@ const TeacherDashboard = () => {
     pendingReports: 0,
   });
 
-  // ตรวจสอบสิทธิ์การเข้าถึง
-  requireTeacher();
+  // การตรวจสอบสิทธิ์จะทำงานอัตโนมัติใน useAuth hook แล้ว
+
+  // Redirect to main page since dashboard is now integrated
+  useEffect(() => {
+    router.push("/");
+  }, [router]);
 
   // ดึงข้อมูลสถิติ
   useEffect(() => {

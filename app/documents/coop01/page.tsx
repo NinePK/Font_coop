@@ -89,6 +89,52 @@ const CoopFormPage = () => {
     fetchEntrepreneurs();
   }, []);
 
+  // ดึงข้อมูล training ที่เคยบันทึกไว้ (COOP-01)
+  useEffect(() => {
+    if (user && currentSemester) {
+      const fetchExistingTraining = async () => {
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACK_URL}/training/user/${user.id}-${currentSemester.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+              const existingTraining = data[0];
+              console.log("Found existing training data:", existingTraining);
+              
+              // โหลดข้อมูลเดิมในฟอร์ม
+              setSelectedEntrepreneur(existingTraining.job?.entrepreneurId?.toString() || "");
+              setSelectedJob(existingTraining.jobId?.toString() || "");
+              setSelectedYear(existingTraining.user?.year || "");
+              setAdvisor1(existingTraining.teacherId1?.toString() || "");
+              setAdvisor2(existingTraining.teacherId2?.toString() || "");
+              
+              if (existingTraining.startdate) {
+                setStartDate(dayjs(existingTraining.startdate));
+              }
+              if (existingTraining.enddate) {
+                setEndDate(dayjs(existingTraining.enddate));
+              }
+              
+              // ถ้ามี entrepreneur ให้ดึง jobs ของ entrepreneur นั้น
+              if (existingTraining.job?.entrepreneurId) {
+                const jobsResponse = await fetch(
+                  `${process.env.NEXT_PUBLIC_BACK_URL}/job/search?entrepreneurId=${existingTraining.job.entrepreneurId}`
+                );
+                if (jobsResponse.ok) {
+                  const jobsData = await jobsResponse.json();
+                  setJobs(jobsData);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching existing training data:", error);
+        }
+      };
+      fetchExistingTraining();
+    }
+  }, [user, currentSemester]);
+
   // Fetch Jobs when Entrepreneur changes
   useEffect(() => {
     if (selectedEntrepreneur) {
@@ -378,7 +424,7 @@ const CoopFormPage = () => {
                 <MenuItem value="">
                   <em>{loadingJobs ? "กำลังโหลด..." : "ตำแหน่ง"}</em>
                 </MenuItem>
-                {jobs.map((job) => (
+                {Array.isArray(jobs) && jobs.map((job) => (
                   <MenuItem key={job.id} value={job.id}>
                     {job.name}
                   </MenuItem>
