@@ -16,28 +16,31 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `acadrank`
+-- Table structure for table `plain`
 --
 
-DROP TABLE IF EXISTS `acadrank`;
+DROP TABLE IF EXISTS `plain`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `acadrank` (
+CREATE TABLE `plain` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name_th` varchar(100) DEFAULT NULL,
-  `name_en` varchar(100) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `month` int(2) DEFAULT NULL,
+  `topic` varchar(100) DEFAULT NULL,
+  `training_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uni_plain_id` (`id`),
+  KEY `fk_record_training1_idx` (`training_id`),
+  CONSTRAINT `fk_plain_training` FOREIGN KEY (`training_id`) REFERENCES `training` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `acadrank`
+-- Dumping data for table `plain`
 --
 
-LOCK TABLES `acadrank` WRITE;
-/*!40000 ALTER TABLE `acadrank` DISABLE KEYS */;
-INSERT INTO `acadrank` VALUES (0,' ',' '),(1,'ผู้ช่วยศาสตราจารย์','Assistance Professor'),(2,'รองศาสตราจารย์','Associate Professor'),(3,'ศาสตราจารย์','Professor');
-/*!40000 ALTER TABLE `acadrank` ENABLE KEYS */;
+LOCK TABLES `plain` WRITE;
+/*!40000 ALTER TABLE `plain` DISABLE KEYS */;
+/*!40000 ALTER TABLE `plain` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

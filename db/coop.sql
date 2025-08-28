@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 15, 2025 at 06:00 AM
+-- Generation Time: Aug 26, 2025 at 05:13 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -1355,26 +1355,33 @@ CREATE TABLE `coop04_accommodation` (
   `id` int(11) NOT NULL,
   `training_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `accommodation_type` varchar(50) NOT NULL COMMENT 'ประเภทที่พัก: หอพัก, อพาร์ตเมนต์, บ้านเช่า, อื่นๆ',
-  `accommodation_name` varchar(200) DEFAULT NULL COMMENT 'ชื่อที่พัก',
-  `room_number` varchar(20) DEFAULT NULL COMMENT 'หมายเลขห้อง',
-  `address` varchar(500) NOT NULL COMMENT 'ที่อยู่',
-  `subdistrict` varchar(100) NOT NULL COMMENT 'ตำบล',
-  `district` varchar(100) NOT NULL COMMENT 'อำเภอ',
-  `province` varchar(100) NOT NULL COMMENT 'จังหวัด',
-  `postal_code` varchar(10) NOT NULL COMMENT 'รหัสไปรษณีย์',
-  `phone_number` varchar(20) DEFAULT NULL COMMENT 'เบอร์โทรศัพท์ที่พัก',
-  `emergency_contact` varchar(200) NOT NULL COMMENT 'ชื่อผู้ติดต่อฉุกเฉิน',
-  `emergency_phone` varchar(20) NOT NULL COMMENT 'เบอร์โทรฉุกเฉิน',
-  `emergency_relation` varchar(100) NOT NULL COMMENT 'ความสัมพันธ์กับผู้ติดต่อฉุกเฉิน',
-  `travel_method` varchar(100) NOT NULL COMMENT 'วิธีการเดินทาง',
-  `travel_details` text DEFAULT NULL COMMENT 'รายละเอียดการเดินทาง',
-  `distance_km` decimal(5,2) DEFAULT NULL COMMENT 'ระยะทางเป็นกิโลเมตร',
-  `travel_time` int(11) DEFAULT NULL COMMENT 'เวลาเดินทางเป็นนาที',
+  `accommodation_type` varchar(50) NOT NULL,
+  `accommodation_name` varchar(200) DEFAULT NULL,
+  `room_number` varchar(20) DEFAULT NULL,
+  `address` varchar(500) NOT NULL,
+  `subdistrict` varchar(100) NOT NULL,
+  `district` varchar(100) NOT NULL,
+  `province` varchar(100) NOT NULL,
+  `postal_code` varchar(10) NOT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
+  `emergency_contact` varchar(200) NOT NULL,
+  `emergency_phone` varchar(20) NOT NULL,
+  `emergency_relation` varchar(100) NOT NULL,
+  `travel_method` varchar(100) NOT NULL,
+  `travel_details` text DEFAULT NULL,
+  `distance_km` decimal(5,2) DEFAULT NULL,
+  `travel_time` int(11) DEFAULT NULL,
   `status` enum('pending','submitted','approved','rejected') DEFAULT 'submitted',
   `created_at` datetime DEFAULT current_timestamp(),
-  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `coop04_accommodation`
+--
+
+INSERT INTO `coop04_accommodation` (`id`, `training_id`, `user_id`, `accommodation_type`, `accommodation_name`, `room_number`, `address`, `subdistrict`, `district`, `province`, `postal_code`, `phone_number`, `emergency_contact`, `emergency_phone`, `emergency_relation`, `travel_method`, `travel_details`, `distance_km`, `travel_time`, `status`, `created_at`, `updated_at`) VALUES
+(1, 135, 38, 'dormitory', 'htyhtyh', '4', 'tyhthyth', 'จตุจักร', 'จตุจักร', 'กรุงเทพมหานคร', '76000', '1234567890', 'ioukuy', '14252252', 'iopih', 'car', 'piopij', 10.00, 10, 'submitted', '2025-08-15 11:29:00', '2025-08-15 11:59:35');
 
 -- --------------------------------------------------------
 
@@ -2647,6 +2654,19 @@ CREATE TABLE `notification` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `plain`
+--
+
+CREATE TABLE `plain` (
+  `id` int(11) NOT NULL,
+  `month` int(2) DEFAULT NULL,
+  `topic` varchar(100) DEFAULT NULL,
+  `training_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `plan`
 --
 
@@ -3177,6 +3197,28 @@ INSERT INTO `province` (`id`, `value`) VALUES
 (94, 'ปัตตานี'),
 (95, 'ยะลา'),
 (96, 'นราธิวาส');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `record`
+--
+
+CREATE TABLE `record` (
+  `id` int(11) NOT NULL,
+  `week` int(11) DEFAULT NULL,
+  `startdate` date DEFAULT NULL,
+  `enddate` date DEFAULT NULL,
+  `starttime` datetime(3) DEFAULT NULL,
+  `endtime` datetime(3) DEFAULT NULL,
+  `training_id` int(11) NOT NULL,
+  `job` mediumtext DEFAULT NULL,
+  `problem` mediumtext DEFAULT NULL,
+  `fixed` mediumtext DEFAULT NULL,
+  `course_fixed` mediumtext DEFAULT NULL,
+  `exp` mediumtext DEFAULT NULL,
+  `suggestion` mediumtext DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -14408,6 +14450,14 @@ ALTER TABLE `notification`
   ADD KEY `fk_notification_sender_idx` (`sender_id`);
 
 --
+-- Indexes for table `plain`
+--
+ALTER TABLE `plain`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uni_plain_id` (`id`),
+  ADD KEY `fk_record_training1_idx` (`training_id`);
+
+--
 -- Indexes for table `plan`
 --
 ALTER TABLE `plan`
@@ -14420,6 +14470,13 @@ ALTER TABLE `plan`
 --
 ALTER TABLE `province`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `record`
+--
+ALTER TABLE `record`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_record_training1_idx` (`training_id`);
 
 --
 -- Indexes for table `report_outline`
@@ -14542,7 +14599,7 @@ ALTER TABLE `assess_student`
 -- AUTO_INCREMENT for table `coop04_accommodation`
 --
 ALTER TABLE `coop04_accommodation`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `coop10_confirmation`
@@ -14605,6 +14662,12 @@ ALTER TABLE `notification`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `plain`
+--
+ALTER TABLE `plain`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `plan`
 --
 ALTER TABLE `plan`
@@ -14615,6 +14678,12 @@ ALTER TABLE `plan`
 --
 ALTER TABLE `province`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=97;
+
+--
+-- AUTO_INCREMENT for table `record`
+--
+ALTER TABLE `record`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `report_outline`
@@ -14662,7 +14731,7 @@ ALTER TABLE `tambon`
 -- AUTO_INCREMENT for table `training`
 --
 ALTER TABLE `training`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=150;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=152;
 
 --
 -- AUTO_INCREMENT for table `user`
@@ -14717,7 +14786,9 @@ ALTER TABLE `assess_student`
 --
 ALTER TABLE `coop04_accommodation`
   ADD CONSTRAINT `fk_accommodation_training` FOREIGN KEY (`training_id`) REFERENCES `training` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  ADD CONSTRAINT `fk_accommodation_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION;
+  ADD CONSTRAINT `fk_accommodation_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  ADD CONSTRAINT `fk_coop04_accommodation_training` FOREIGN KEY (`training_id`) REFERENCES `training` (`id`),
+  ADD CONSTRAINT `fk_coop04_accommodation_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
 
 --
 -- Constraints for table `coop10_confirmation`
@@ -14777,10 +14848,22 @@ ALTER TABLE `notification`
   ADD CONSTRAINT `fk_notification_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
 
 --
+-- Constraints for table `plain`
+--
+ALTER TABLE `plain`
+  ADD CONSTRAINT `fk_plain_training` FOREIGN KEY (`training_id`) REFERENCES `training` (`id`);
+
+--
 -- Constraints for table `plan`
 --
 ALTER TABLE `plan`
   ADD CONSTRAINT `fk_plan_training` FOREIGN KEY (`training_id`) REFERENCES `training` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION;
+
+--
+-- Constraints for table `record`
+--
+ALTER TABLE `record`
+  ADD CONSTRAINT `fk_record_training` FOREIGN KEY (`training_id`) REFERENCES `training` (`id`);
 
 --
 -- Constraints for table `report_outline`

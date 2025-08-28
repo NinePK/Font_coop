@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Select,
   MenuItem,
@@ -16,6 +17,16 @@ import {
   Button,
   Alert,
   Snackbar,
+  Card,
+  CardContent,
+  CardHeader,
+  Divider,
+  Container,
+  Paper,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Backdrop,
 } from "@mui/material";
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -24,6 +35,7 @@ import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
 
 const CoopFormPage = () => {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [entrepreneurs, setEntrepreneurs] = useState<any[]>([]);
   const [selectedEntrepreneur, setSelectedEntrepreneur] = useState<string>("");
@@ -35,8 +47,12 @@ const CoopFormPage = () => {
   const [selectedYear, setSelectedYear] = useState<number | "">(""); // สำหรับชั้นปี
   const [advisor1, setAdvisor1] = useState<string>(""); // อาจารย์ที่ปรึกษา 1
   const [advisor2, setAdvisor2] = useState<string>(""); // อาจารย์ที่ปรึกษา 2
+  const [teachers, setTeachers] = useState<any[]>([]); // รายชื่ออาจารย์ทั้งหมด
+  const [loadingTeachers, setLoadingTeachers] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
   const [currentSemester, setCurrentSemester] = useState<any>(null);
+  const [hasExistingData, setHasExistingData] = useState<boolean>(false); // เพิ่ม state ตรวจสอบข้อมูลเดิม
+  const [showRedirectDialog, setShowRedirectDialog] = useState<boolean>(false); // สำหรับแสดง popup redirect
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -89,6 +105,43 @@ const CoopFormPage = () => {
     fetchEntrepreneurs();
   }, []);
 
+  // Fetch Teachers
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      setLoadingTeachers(true);
+      try {
+        console.log('Fetching teachers from API...');
+        const response = await fetch('/api/teacher');
+        console.log('Teacher API response status:', response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Teacher API error response:', errorText);
+          throw new Error(`Failed to fetch teachers: ${response.status} ${response.statusText}`);
+        }
+        
+        const data: any = await response.json();
+        console.log('Teacher API response data:', data);
+        setTeachers(Array.isArray(data) ? data : []);
+        
+        if (!Array.isArray(data) || data.length === 0) {
+          console.warn('No teachers found or invalid data format');
+        }
+      } catch (error) {
+        console.error('Error fetching teachers:', error);
+        setTeachers([]);
+        setSnackbar({
+          open: true,
+          message: `ไม่สามารถโหลดข้อมูลอาจารย์ได้: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          severity: 'error'
+        });
+      } finally {
+        setLoadingTeachers(false);
+      }
+    };
+    fetchTeachers();
+  }, []);
+
   // ดึงข้อมูล training ที่เคยบันทึกไว้ (COOP-01)
   useEffect(() => {
     if (user && currentSemester) {
@@ -100,6 +153,9 @@ const CoopFormPage = () => {
             if (data && data.length > 0) {
               const existingTraining = data[0];
               console.log("Found existing training data:", existingTraining);
+              
+              // ตั้งค่าให้รู้ว่ามีข้อมูลเดิมแล้ว (ไม่ให้แก้ไขได้)
+              setHasExistingData(true);
               
               // โหลดข้อมูลเดิมในฟอร์ม
               setSelectedEntrepreneur(existingTraining.job?.entrepreneurId?.toString() || "");
@@ -166,10 +222,10 @@ const CoopFormPage = () => {
 
   const handleSave = async () => {
     // ตรวจสอบข้อมูลที่จำเป็น
-    if (!selectedEntrepreneur || !selectedJob || !startDate || !endDate || !selectedYear || !currentSemester) {
+    if (!selectedEntrepreneur || !selectedJob || !startDate || !endDate || !selectedYear || !currentSemester || !advisor1) {
       setSnackbar({
         open: true,
-        message: 'กรุณากรอกข้อมูลให้ครบถ้วน และตรวจสอบว่ามีภาคการศึกษาปัจจุบัน',
+        message: 'กรุณากรอกข้อมูลให้ครบถ้วน (อาจารย์ที่ปรึกษา 1 เป็นข้อมูลบังคับ)',
         severity: 'error'
       });
       return;
@@ -238,20 +294,21 @@ const CoopFormPage = () => {
       const result: any = await response.json();
       console.log('Training saved successfully:', result);
 
+      // ส่งการแจ้งเตือนไปยังอาจารย์ที่ปรึกษา
+      await sendNotificationToTeachers();
+
       setSnackbar({
         open: true,
-        message: 'บันทึกข้อมูลสำเร็จ',
+        message: 'บันทึกข้อมูลสำเร็จ และส่งการแจ้งเตือนไปยังอาจารย์ที่ปรึกษาแล้ว',
         severity: 'success'
       });
 
-      // รีเซ็ตฟอร์มหลังจากบันทึกสำเร็จ
-      setSelectedEntrepreneur("");
-      setSelectedJob("");
-      setStartDate(null);
-      setEndDate(null);
-      setSelectedYear("");
-      setAdvisor1("");
-      setAdvisor2("");
+      // แสดง popup redirect loading และ redirect ทันที
+      setShowRedirectDialog(true);
+      setTimeout(() => {
+        // ใช้ Next.js router เพื่อไม่ให้ session หาย
+        router.push("/dashboard");
+      }, 1500); // รอ 1.5 วินาที แล้ว redirect
 
     } catch (error) {
       console.error('Error saving data:', error);
@@ -269,6 +326,36 @@ const CoopFormPage = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  const sendNotificationToTeachers = async () => {
+    try {
+      const notificationData = {
+        userId: user.id,
+        userName: `${user.fname} ${user.sname}`,
+        userCode: user.username,
+        advisorId1: advisor1 ? parseInt(advisor1) : null,
+        advisorId2: advisor2 ? parseInt(advisor2) : null,
+        documentType: 'COOP-01',
+        message: `นิสิต ${user.fname} ${user.sname} (${user.username}) ได้ส่งใบรายงานตัวสหกิจศึกษา (COOP-01) เพื่อขออนุมัติ`
+      };
+
+      const response = await fetch('/api/notification/teachers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationData),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to send notification to teachers');
+      } else {
+        console.log('Notification sent to teachers successfully');
+      }
+    } catch (error) {
+      console.error('Error sending notification to teachers:', error);
+    }
+  };
+
   if (!user) {
     return <div>Loading...</div>;
   }
@@ -276,219 +363,410 @@ const CoopFormPage = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box
-        className="min-h-screen bg-gray-100"
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
+        sx={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          py: 4
+        }}
       >
-        <Box
-          className="bg-white shadow-md rounded p-6"
-          style={{ maxWidth: "800px", width: "100%" }}
-        >
-          <Typography variant="h5" align="center" gutterBottom>
-            ใบรายงานตัวสหกิจศึกษา
-          </Typography>
-
-          {/* ข้อมูลผู้ใช้ */}
-          <Grid container spacing={2}>
-            {/* ชื่อไทย, ชื่ออังกฤษ, และรหัสนิสิต */}
-            <Grid item xs={4}>
-              <TextField
-                label="ชื่อไทย"
-                value={`${user.fname} ${user.sname}`}
-                InputProps={{ readOnly: true }}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={4}>
-              <TextField
-                label="ชื่ออังกฤษ"
-                value={`${user.fnameEn} ${user.snameEn}`}
-                InputProps={{ readOnly: true }}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={4}>
-              <TextField
-                label="รหัสนิสิต"
-                value={user.username}
-                InputProps={{ readOnly: true }}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-
-            {/* หลักสูตร */}
-            <Grid item xs={12}>
-              <TextField
-                label="หลักสูตร"
-                value={user.major.degree}
-                InputProps={{ readOnly: true }}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-
-            {/* สาขาวิชา */}
-            <Grid item xs={12}>
-              <TextField
-                label="สาขาวิชา"
-                value={user.major.majorTh}
-                InputProps={{ readOnly: true }}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-
-            {/* คณะ */}
-            <Grid item xs={12}>
-              <TextField
-                label="คณะ"
-                value={user.major.faculty.facultyTh}
-                InputProps={{ readOnly: true }}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-
-            {/* ภาคการศึกษาปัจจุบัน */}
-            <Grid item xs={12}>
-              <TextField
-                label="ภาคการศึกษาปัจจุบัน"
-                value={currentSemester ? `ภาคเรียนที่ ${currentSemester.semester} ปีการศึกษา ${currentSemester.year}` : 'กำลังโหลด...'}
-                InputProps={{ readOnly: true }}
-                fullWidth
-                margin="normal"
-                color={currentSemester ? "success" : "warning"}
-              />
-            </Grid>
-
-            {/* ชั้นปี */}
-            <Grid item xs={12}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel id="year-select-label">ชั้นปี</InputLabel>
-                <Select
-                  labelId="year-select-label"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))} // แปลงค่าเป็น number
-                >
-                  <MenuItem value={1}>ปี 1</MenuItem>
-                  <MenuItem value={2}>ปี 2</MenuItem>
-                  <MenuItem value={3}>ปี 3</MenuItem>
-                  <MenuItem value={4}>ปี 4</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="entrepreneur-select-label">ชื่อสถานประกอบการ</InputLabel>
-              <Select
-                labelId="entrepreneur-select-label"
-                value={selectedEntrepreneur}
-                onChange={(e) => setSelectedEntrepreneur(e.target.value)}
-                required
-              >
-                <MenuItem value="">
-                  <em>เลือกสถานประกอบการ</em>
-                </MenuItem>
-                {entrepreneurs.map((entrepreneur) => (
-                  <MenuItem key={entrepreneur.id} value={entrepreneur.id}>
-                    {entrepreneur.nameTh}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* Add Button for Entrepreneur */}
-            <Box display="flex" alignItems="center" marginY={2}>
-              <Typography variant="body2" color="textSecondary" style={{ flexGrow: 1 }}>
-                ค้นหาไม่พบ
+        <Container maxWidth="lg">
+          <Paper
+            elevation={8}
+            sx={{
+              borderRadius: 3,
+              overflow: "hidden",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.1)"
+            }}
+          >
+            {/* Header */}
+            <Box
+              sx={{
+                background: "linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)",
+                color: "white",
+                p: 4,
+                textAlign: "center"
+              }}
+            >
+              <Typography variant="h4" fontWeight="bold" gutterBottom>
+                ใบรายงานตัวสหกิจศึกษา
               </Typography>
-              <Tooltip title="เพิ่มสถานประกอบการ">
-                <IconButton color="primary" onClick={handleAddEntrepreneurClick}>
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
+              <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+                COOP-01 Application Form
+              </Typography>
             </Box>
 
-            {/* Select for Jobs */}
-            <FormControl fullWidth margin="normal" disabled={!selectedEntrepreneur || loadingJobs}>
-              <InputLabel id="job-select-label">ตำแหน่ง</InputLabel>
-              <Select
-                labelId="job-select-label"
-                value={selectedJob}
-                onChange={(e) => setSelectedJob(e.target.value)}
-              >
-                <MenuItem value="">
-                  <em>{loadingJobs ? "กำลังโหลด..." : "ตำแหน่ง"}</em>
-                </MenuItem>
-                {Array.isArray(jobs) && jobs.map((job) => (
-                  <MenuItem key={job.id} value={job.id}>
-                    {job.name}
-                  </MenuItem>
-                ))}
-              </Select>
-              {loadingJobs && <CircularProgress size={24} style={{ marginLeft: "1rem" }} />}
-            </FormControl>
-
-            {/* Date Picker for Start and End Dates */}
-            <Box display="flex" justifyContent="space-between" marginTop={2} gap={2}>
-              <DatePicker
-                label="จาก"
-                value={startDate}
-                onChange={(newValue) => setStartDate(newValue)}
-                slotProps={{ textField: { fullWidth: true, margin: "normal" } }}
-              />
-              <DatePicker
-                label="ถึง"
-                value={endDate}
-                onChange={(newValue) => setEndDate(newValue)}
-                slotProps={{ textField: { fullWidth: true, margin: "normal" } }}
-              />
-            </Box>
-            
-            {/* อาจารย์ที่ปรึกษา 1 */}
-            <Grid item xs={12}>
-              <TextField
-                label="อาจารย์ที่ปรึกษา 1"
-                value={advisor1}
-                onChange={(e) => setAdvisor1(e.target.value)}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-
-            {/* อาจารย์ที่ปรึกษา 2 */}
-            <Grid item xs={12}>
-              <TextField
-                label="อาจารย์ที่ปรึกษา 2"
-                value={advisor2}
-                onChange={(e) => setAdvisor2(e.target.value)}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-
-            {/* ปุ่มบันทึกข้อมูล */}
-            <Grid item xs={12}>
-              <Box display="flex" justifyContent="center" marginTop={3}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSave}
-                  disabled={saving}
-                  sx={{ minWidth: 200 }}
+            <Box sx={{ p: 4 }}>
+              {/* แสดงสถานะเมื่อมีข้อมูลเดิมแล้ว */}
+              {hasExistingData && (
+                <Alert 
+                  severity="info" 
+                  sx={{ 
+                    mb: 3,
+                    borderRadius: 2,
+                    "& .MuiAlert-message": {
+                      fontSize: "16px"
+                    }
+                  }}
                 >
-                  {saving ? <CircularProgress size={24} /> : 'บันทึกข้อมูล'}
-                </Button>
+                  🎉 คุณได้ส่งใบรายงานตัวสหกิจศึกษาไปแล้ว ด้านล่างเป็นข้อมูลที่คุณเคยบันทึกไว้
+                </Alert>
+              )}
+
+              {/* ข้อมูลนิสิต */}
+              <Card elevation={3} sx={{ mb: 3, borderRadius: 2 }}>
+                <CardHeader
+                  title="ข้อมูลนิสิต"
+                  sx={{
+                    bgcolor: "primary.50",
+                    "& .MuiCardHeader-title": {
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      color: "primary.main"
+                    }
+                  }}
+                />
+                <CardContent>
+                  <Grid container spacing={3}>
+                    {/* ชื่อไทย, ชื่ออังกฤษ, และรหัสนิสิต */}
+                    <Grid item xs={4}>
+                      <TextField
+                        label="ชื่อไทย"
+                        value={`${user.fname} ${user.sname}`}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        margin="normal"
+                      />
+                    </Grid>
+                    <Grid item xs={4}>
+                      <TextField
+                        label="ชื่ออังกฤษ"
+                        value={`${user.fnameEn} ${user.snameEn}`}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        margin="normal"
+                      />
+                    </Grid>
+                    <Grid item xs={4}>
+                      <TextField
+                        label="รหัสนิสิต"
+                        value={user.username}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        margin="normal"
+                      />
+                    </Grid>
+
+                    {/* หลักสูตร */}
+                    <Grid item xs={12}>
+                      <TextField
+                        label="หลักสูตร"
+                        value={user.major.degree}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        margin="normal"
+                      />
+                    </Grid>
+
+                    {/* สาขาวิชา */}
+                    <Grid item xs={12}>
+                      <TextField
+                        label="สาขาวิชา"
+                        value={user.major.majorTh}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        margin="normal"
+                      />
+                    </Grid>
+
+                    {/* คณะ */}
+                    <Grid item xs={12}>
+                      <TextField
+                        label="คณะ"
+                        value={user.major.faculty.facultyTh}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        margin="normal"
+                      />
+                    </Grid>
+
+                    {/* ภาคการศึกษาปัจจุบัน */}
+                    <Grid item xs={12}>
+                      <TextField
+                        label="ภาคการศึกษาปัจจุบัน"
+                        value={currentSemester ? `ภาคเรียนที่ ${currentSemester.semester} ปีการศึกษา ${currentSemester.year}` : 'กำลังโหลด...'}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        margin="normal"
+                        color={currentSemester ? "success" : "warning"}
+                      />
+                    </Grid>
+
+                    {/* ชั้นปี */}
+                    <Grid item xs={12}>
+                      <FormControl fullWidth disabled={hasExistingData}>
+                        <InputLabel id="year-select-label">ชั้นปี</InputLabel>
+                        <Select
+                          labelId="year-select-label"
+                          value={selectedYear}
+                          onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        >
+                          <MenuItem value={1}>ปี 1</MenuItem>
+                          <MenuItem value={2}>ปี 2</MenuItem>
+                          <MenuItem value={3}>ปี 3</MenuItem>
+                          <MenuItem value={4}>ปี 4</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+
+              {/* ข้อมูลสถานประกอบการ */}
+              <Card elevation={3} sx={{ mb: 3, borderRadius: 2 }}>
+                <CardHeader
+                  title="ข้อมูลสถานประกอบการ"
+                  sx={{
+                    bgcolor: "success.50",
+                    "& .MuiCardHeader-title": {
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      color: "success.main"
+                    }
+                  }}
+                />
+                <CardContent>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth disabled={hasExistingData}>
+                        <InputLabel id="entrepreneur-select-label">ชื่อสถานประกอบการ</InputLabel>
+                        <Select
+                          labelId="entrepreneur-select-label"
+                          value={selectedEntrepreneur}
+                          onChange={(e) => setSelectedEntrepreneur(e.target.value)}
+                          required
+                        >
+                          <MenuItem value="">
+                            <em>เลือกสถานประกอบการ</em>
+                          </MenuItem>
+                          {entrepreneurs.map((entrepreneur) => (
+                            <MenuItem key={entrepreneur.id} value={entrepreneur.id}>
+                              {entrepreneur.nameTh}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      {!hasExistingData && (
+                        <Box display="flex" alignItems="center" justifyContent="space-between" mt={2}>
+                          <Typography variant="body2" color="textSecondary">
+                            ไม่พบสถานประกอบการที่ต้องการ?
+                          </Typography>
+                          <Tooltip title="เพิ่มสถานประกอบการใหม่">
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<AddIcon />}
+                              onClick={handleAddEntrepreneurClick}
+                              sx={{ ml: 2 }}
+                            >
+                              เพิ่มใหม่
+                            </Button>
+                          </Tooltip>
+                        </Box>
+                      )}
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <FormControl fullWidth disabled={hasExistingData || !selectedEntrepreneur || loadingJobs}>
+                        <InputLabel id="job-select-label">ตำแหน่งงาน</InputLabel>
+                        <Select
+                          labelId="job-select-label"
+                          value={selectedJob}
+                          onChange={(e) => setSelectedJob(e.target.value)}
+                        >
+                          <MenuItem value="">
+                            <em>{loadingJobs ? "กำลังโหลด..." : "เลือกตำแหน่งงาน"}</em>
+                          </MenuItem>
+                          {Array.isArray(jobs) && jobs.map((job) => (
+                            <MenuItem key={job.id} value={job.id}>
+                              {job.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {loadingJobs && (
+                          <Box display="flex" justifyContent="center" mt={1}>
+                            <CircularProgress size={20} />
+                          </Box>
+                        )}
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+
+              {/* ระยะเวลาการฝึก */}
+              <Card elevation={3} sx={{ mb: 3, borderRadius: 2 }}>
+                <CardHeader
+                  title="ระยะเวลาการฝึก"
+                  sx={{
+                    bgcolor: "warning.50",
+                    "& .MuiCardHeader-title": {
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      color: "warning.main"
+                    }
+                  }}
+                />
+                <CardContent>
+                  <Grid container spacing={3}>
+                    <Grid item xs={6}>
+                      <DatePicker
+                        label="วันที่เริ่มต้น"
+                        value={startDate}
+                        onChange={(newValue) => setStartDate(newValue)}
+                        disabled={hasExistingData}
+                        slotProps={{ 
+                          textField: { 
+                            fullWidth: true,
+                            variant: "outlined"
+                          } 
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <DatePicker
+                        label="วันที่สิ้นสุด"
+                        value={endDate}
+                        onChange={(newValue) => setEndDate(newValue)}
+                        disabled={hasExistingData}
+                        slotProps={{ 
+                          textField: { 
+                            fullWidth: true,
+                            variant: "outlined"
+                          } 
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+
+              {/* อาจารย์ที่ปรึกษา */}
+              <Card elevation={3} sx={{ mb: 3, borderRadius: 2 }}>
+                <CardHeader
+                  title="อาจารย์ที่ปรึกษา"
+                  sx={{
+                    bgcolor: "secondary.50",
+                    "& .MuiCardHeader-title": {
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      color: "secondary.main"
+                    }
+                  }}
+                />
+                <CardContent>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth disabled={hasExistingData || loadingTeachers}>
+                        <InputLabel id="advisor1-select-label">อาจารย์ที่ปรึกษา 1 (บังคับ)</InputLabel>
+                        <Select
+                          labelId="advisor1-select-label"
+                          value={advisor1}
+                          onChange={(e) => setAdvisor1(e.target.value)}
+                          required
+                        >
+                          <MenuItem value="">
+                            <em>{loadingTeachers ? "กำลังโหลด..." : "เลือกอาจารย์ที่ปรึกษา 1"}</em>
+                          </MenuItem>
+                          {teachers.map((teacher) => (
+                            <MenuItem key={teacher.id} value={teacher.id}>
+                              {teacher.fname} {teacher.sname} ({teacher.username})
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {loadingTeachers && (
+                          <Box display="flex" justifyContent="center" mt={1}>
+                            <CircularProgress size={20} />
+                          </Box>
+                        )}
+                      </FormControl>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <FormControl fullWidth disabled={hasExistingData || loadingTeachers}>
+                        <InputLabel id="advisor2-select-label">อาจารย์ที่ปรึกษา 2 (ไม่บังคับ)</InputLabel>
+                        <Select
+                          labelId="advisor2-select-label"
+                          value={advisor2}
+                          onChange={(e) => setAdvisor2(e.target.value)}
+                        >
+                          <MenuItem value="">
+                            <em>{loadingTeachers ? "กำลังโหลด..." : "เลือกอาจารย์ที่ปรึกษา 2"}</em>
+                          </MenuItem>
+                          {teachers.filter(teacher => teacher.id !== advisor1).map((teacher) => (
+                            <MenuItem key={teacher.id} value={teacher.id}>
+                              {teacher.fname} {teacher.sname} ({teacher.username})
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {loadingTeachers && (
+                          <Box display="flex" justifyContent="center" mt={1}>
+                            <CircularProgress size={20} />
+                          </Box>
+                        )}
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+
+              {/* ปุ่มบันทึกข้อมูล */}
+              <Box display="flex" justifyContent="center" mt={4}>
+                {!hasExistingData ? (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="large"
+                    startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                    onClick={handleSave}
+                    disabled={saving}
+                    sx={{ 
+                      minWidth: 250,
+                      minHeight: 50,
+                      borderRadius: 3,
+                      fontSize: "16px",
+                      fontWeight: "bold",
+                      boxShadow: "0 8px 16px rgba(25, 118, 210, 0.3)",
+                      "&:hover": {
+                        boxShadow: "0 12px 24px rgba(25, 118, 210, 0.4)",
+                        transform: "translateY(-2px)"
+                      },
+                      transition: "all 0.3s ease"
+                    }}
+                  >
+                    {saving ? 'กำลังบันทึก...' : '📝 บันทึกข้อมูล'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    color="success"
+                    size="large"
+                    disabled
+                    sx={{ 
+                      minWidth: 250,
+                      minHeight: 50,
+                      borderRadius: 3,
+                      fontSize: "16px",
+                      fontWeight: "bold"
+                    }}
+                  >
+                    ✅ ส่งข้อมูลแล้ว
+                  </Button>
+                )}
               </Box>
-            </Grid>
-          </Grid>
-        </Box>
+            </Box>
+          </Paper>
+        </Container>
       </Box>
 
       {/* Snackbar สำหรับแสดงข้อความ */}
@@ -506,6 +784,31 @@ const CoopFormPage = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Redirect Loading Dialog */}
+      <Dialog
+        open={showRedirectDialog}
+        disableEscapeKeyDown
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            minWidth: 400,
+            textAlign: 'center'
+          }
+        }}
+      >
+        <DialogContent sx={{ py: 4 }}>
+          <Box display="flex" flexDirection="column" alignItems="center" gap={3}>
+            <CircularProgress size={60} thickness={4} />
+            <Typography variant="h6" fontWeight="bold" color="primary">
+              🎉 บันทึกข้อมูลสำเร็จ!
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              กำลังนำคุณไปยังหน้าหลัก...
+            </Typography>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </LocalizationProvider>
   );
 };

@@ -88,7 +88,6 @@ const ReportWeeklyPage = () => {
     const fetchCurrentSemester = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACK_URL}/semester/current`);
-        if (!response.ok) throw new Error("Failed to fetch current semester");
         const data = await response.json();
         setCurrentSemester(data);
       } catch (error) {
@@ -168,7 +167,6 @@ const ReportWeeklyPage = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save weekly report');
       }
 
       setSnackbar({

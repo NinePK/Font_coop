@@ -31,7 +31,8 @@ export interface User {
 export enum UserRole {
   STUDENT = 'STUDENT',
   TEACHER = 'TEACHER',
-  OFFICER = 'OFFICER'
+  OFFICER = 'OFFICER',
+  MENTOR = 'MENTOR'
 }
 
 // Get user from cookie
@@ -75,6 +76,11 @@ export const isOfficer = (user: User | null): boolean => {
   return hasRole(user, UserRole.OFFICER);
 };
 
+// Check if user is mentor
+export const isMentor = (user: User | null): boolean => {
+  return hasRole(user, UserRole.MENTOR);
+};
+
 // Check if user is admin
 export const isAdmin = (user: User | null): boolean => {
   if (!user) return false;
@@ -92,6 +98,8 @@ export const getRoleDisplayName = (user: User | null): string => {
       return 'อาจารย์';
     case UserRole.OFFICER:
       return 'เจ้าหน้าที่';
+    case UserRole.MENTOR:
+      return 'ผู้สอนงาน/พี่เลี้ยง';
     default:
       return user.role.status || 'ไม่ทราบสิทธิ์';
   }
@@ -110,4 +118,9 @@ export const canAccessStudentRoutes = (user: User | null): boolean => {
 // Check if user can access admin routes
 export const canAccessAdminRoutes = (user: User | null): boolean => {
   return isAdmin(user) || isOfficer(user);
+};
+
+// Check if user can access mentor routes
+export const canAccessMentorRoutes = (user: User | null): boolean => {
+  return isMentor(user) || isOfficer(user) || isAdmin(user);
 };

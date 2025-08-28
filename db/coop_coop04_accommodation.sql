@@ -26,31 +26,33 @@ CREATE TABLE `coop04_accommodation` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `training_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `accommodation_type` varchar(50) NOT NULL COMMENT 'ประเภทที่พัก: หอพัก, อพาร์ตเมนต์, บ้านเช่า, อื่นๆ',
-  `accommodation_name` varchar(200) DEFAULT NULL COMMENT 'ชื่อที่พัก',
-  `room_number` varchar(20) DEFAULT NULL COMMENT 'หมายเลขห้อง',
-  `address` varchar(500) NOT NULL COMMENT 'ที่อยู่',
-  `subdistrict` varchar(100) NOT NULL COMMENT 'ตำบล',
-  `district` varchar(100) NOT NULL COMMENT 'อำเภอ',
-  `province` varchar(100) NOT NULL COMMENT 'จังหวัด',
-  `postal_code` varchar(10) NOT NULL COMMENT 'รหัสไปรษณีย์',
-  `phone_number` varchar(20) DEFAULT NULL COMMENT 'เบอร์โทรศัพท์ที่พัก',
-  `emergency_contact` varchar(200) NOT NULL COMMENT 'ชื่อผู้ติดต่อฉุกเฉิน',
-  `emergency_phone` varchar(20) NOT NULL COMMENT 'เบอร์โทรฉุกเฉิน',
-  `emergency_relation` varchar(100) NOT NULL COMMENT 'ความสัมพันธ์กับผู้ติดต่อฉุกเฉิน',
-  `travel_method` varchar(100) NOT NULL COMMENT 'วิธีการเดินทาง',
-  `travel_details` text DEFAULT NULL COMMENT 'รายละเอียดการเดินทาง',
-  `distance_km` decimal(5,2) DEFAULT NULL COMMENT 'ระยะทางเป็นกิโลเมตร',
-  `travel_time` int(11) DEFAULT NULL COMMENT 'เวลาเดินทางเป็นนาที',
+  `accommodation_type` varchar(50) NOT NULL,
+  `accommodation_name` varchar(200) DEFAULT NULL,
+  `room_number` varchar(20) DEFAULT NULL,
+  `address` varchar(500) NOT NULL,
+  `subdistrict` varchar(100) NOT NULL,
+  `district` varchar(100) NOT NULL,
+  `province` varchar(100) NOT NULL,
+  `postal_code` varchar(10) NOT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
+  `emergency_contact` varchar(200) NOT NULL,
+  `emergency_phone` varchar(20) NOT NULL,
+  `emergency_relation` varchar(100) NOT NULL,
+  `travel_method` varchar(100) NOT NULL,
+  `travel_details` text DEFAULT NULL,
+  `distance_km` decimal(5,2) DEFAULT NULL,
+  `travel_time` int(11) DEFAULT NULL,
   `status` enum('pending','submitted','approved','rejected') DEFAULT 'submitted',
   `created_at` datetime DEFAULT current_timestamp(),
-  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_accommodation_training_idx` (`training_id`),
   KEY `fk_accommodation_user_idx` (`user_id`),
   CONSTRAINT `fk_accommodation_training` FOREIGN KEY (`training_id`) REFERENCES `training` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `fk_accommodation_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  CONSTRAINT `fk_accommodation_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `fk_coop04_accommodation_training` FOREIGN KEY (`training_id`) REFERENCES `training` (`id`),
+  CONSTRAINT `fk_coop04_accommodation_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -59,6 +61,7 @@ CREATE TABLE `coop04_accommodation` (
 
 LOCK TABLES `coop04_accommodation` WRITE;
 /*!40000 ALTER TABLE `coop04_accommodation` DISABLE KEYS */;
+INSERT INTO `coop04_accommodation` VALUES (1,135,38,'dormitory','htyhtyh','4','tyhthyth','จตุจักร','จตุจักร','กรุงเทพมหานคร','76000','1234567890','ioukuy','14252252','iopih','car','piopij',10.00,10,'submitted','2025-08-15 11:29:00','2025-08-15 11:59:35');
 /*!40000 ALTER TABLE `coop04_accommodation` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -71,4 +74,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-15 10:58:09
+-- Dump completed on 2025-08-26 13:52:15

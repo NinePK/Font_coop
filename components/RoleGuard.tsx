@@ -142,3 +142,9 @@ export const AdminGuard = ({ children }: { children: ReactNode }) => (
     {children}
   </RoleGuard>
 );
+
+export const MentorGuard = ({ children }: { children: ReactNode }) => (
+  <RoleGuard allowedRoles={[UserRole.MENTOR, UserRole.OFFICER]}>
+    {children}
+  </RoleGuard>
+);

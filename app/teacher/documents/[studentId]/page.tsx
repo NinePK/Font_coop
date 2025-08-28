@@ -22,7 +22,6 @@ import {
   ListItemIcon,
   Divider,
   Button,
-  LinearProgress,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -38,8 +37,6 @@ import {
   CheckCircle,
   Schedule,
   Warning,
-  Download,
-  Upload,
   Assignment,
   BusinessCenter,
   School,
@@ -87,12 +84,12 @@ interface Document {
   status: "pending" | "submitted" | "approved" | "rejected";
   submittedDate?: string;
   approvedDate?: string;
-  downloadUrl?: string;
   category: "pre-training" | "during-training" | "post-training";
   comment?: string;
   approvedBy?: string;
   rejectedReason?: string;
-  formData?: any; // ข้อมูลที่นิสิตกรอก
+  formData?: any;
+  documentType?: string;
   submissionHistory?: {
     date: string;
     action: 'submitted' | 'approved' | 'rejected';
@@ -101,8 +98,8 @@ interface Document {
   }[];
 }
 
-const TeacherDocuments = () => {
-  const { user, loading, checkTeacher } = useAuth();
+const TeacherStudentDocuments = () => {
+  const { user, loading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const studentId = params.studentId as string;
@@ -122,132 +119,24 @@ const TeacherDocuments = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [processing, setProcessing] = useState(false);
 
-  // การตรวจสอบสิทธิ์จะทำงานอัตโนมัติใน useAuth hook แล้ว
 
-  // ข้อมูลจำลองเอกสารที่ต้องกรอก
-  const mockDocuments: Document[] = [
-    // เอกสารก่อนฝึกงาน
-    {
-      id: "doc-01",
-      name: "หนังสือขอฝึกงาน",
-      description: "หนังสือขออนุญาตฝึกงานจากมหาวิทยาลัย",
-      required: true,
-      status: "approved",
-      submittedDate: "2024-09-01",
-      approvedDate: "2024-09-05",
-      downloadUrl: "/documents/request-letter.pdf",
-      category: "pre-training"
-    },
-    {
-      id: "doc-02", 
-      name: "แผนการฝึกงาน",
-      description: "แผนการฝึกงานและเป้าหมายการเรียนรู้",
-      required: true,
-      status: "submitted",
-      submittedDate: "2024-09-10",
-      category: "pre-training",
-      submissionHistory: [
-        {
-          date: "2024-09-10",
-          action: "submitted",
-          comment: "ส่งแผนการฝึกงานเวอร์ชันแรก",
-          by: "นิสิต"
-        }
-      ]
-    },
-    {
-      id: "doc-03",
-      name: "หนังสือจากบริษัท",
-      description: "หนังสือตอบรับจากบริษัทที่จะฝึกงาน",
-      required: true,
-      status: "approved",
-      submittedDate: "2024-09-08",
-      approvedDate: "2024-09-12",
-      downloadUrl: "/documents/company-acceptance.pdf",
-      category: "pre-training"
-    },
-    // เอกสารระหว่างฝึกงาน
-    {
-      id: "doc-04",
-      name: "รายงานการฝึกงานครั้งที่ 1",
-      description: "รายงานการฝึกงานประจำเดือนที่ 1",
-      required: true,
-      status: "approved",
-      submittedDate: "2024-10-30",
-      approvedDate: "2024-11-02",
-      category: "during-training"
-    },
-    {
-      id: "doc-05",
-      name: "รายงานการฝึกงานครั้งที่ 2", 
-      description: "รายงานการฝึกงานประจำเดือนที่ 2",
-      required: true,
-      status: "submitted",
-      submittedDate: "2024-11-30",
-      category: "during-training",
-      submissionHistory: [
-        {
-          date: "2024-11-30",
-          action: "submitted",
-          comment: "ส่งรายงานประจำเดือนที่ 2",
-          by: "นิสิต"
-        }
-      ]
-    },
-    {
-      id: "doc-06",
-      name: "บันทึกการเข้าร่วมกิจกรรม",
-      description: "บันทึกการเข้าร่วมกิจกรรมหรือการประชุมต่างๆ",
-      required: false,
-      status: "pending",
-      category: "during-training"
-    },
-    // เอกสารหลังฝึกงาน
-    {
-      id: "doc-07",
-      name: "รายงานสรุปการฝึกงาน",
-      description: "รายงานสรุปผลการฝึกงานฉบับสมบูรณ์",
-      required: true,
-      status: "pending",
-      category: "post-training"
-    },
-    {
-      id: "doc-08",
-      name: "แบบประเมินจากบริษัท",
-      description: "แบบประเมินผลการฝึกงานจากพี่เลี้ยง/บริษัท",
-      required: true,
-      status: "pending",
-      category: "post-training"
-    },
-    {
-      id: "doc-09",
-      name: "หนังสือขอบคุณ",
-      description: "หนังสือขอบคุณส่งให้บริษัทที่ให้ฝึกงาน",
-      required: true,
-      status: "pending", 
-      category: "post-training"
-    }
-  ];
-
-  // ดึงข้อมูลนิสิต
+  // ดึงข้อมูลนิสิตและเอกสาร
   useEffect(() => {
     if (user && !loading && studentId) {
       fetchStudentInfo();
-      setDocuments(mockDocuments);
-      setLoadingData(false);
+      fetchStudentDocuments();
     }
   }, [user, loading, studentId]);
-
 
   const fetchStudentInfo = async () => {
     try {
       const backUrl = process.env.NEXT_PUBLIC_BACK_URL || 'http://localhost:6008';
       
-      // ดึงข้อมูลนิสิตที่อาจารย์ดูแล
+      // เรียกใช้ API เดิมก่อน (จะต้องแก้ไข backend ภายหลัง) 
       const response = await fetch(`${backUrl}/teacher/students/${user?.id}`);
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Cannot fetch student info`);
+        throw new Error(`HTTP ${response.status}: Cannot fetch assigned students`);
       }
       
       const students = await response.json();
@@ -255,10 +144,33 @@ const TeacherDocuments = () => {
       
       if (currentStudent) {
         setStudent(currentStudent);
+      } else {
+        setError('ไม่พบข้อมูลนิสิตหรือนิสิตคนนี้ไม่ได้อยู่ในความดูแลของคุณ');
       }
     } catch (error) {
       console.error('Error fetching student info:', error);
-      setError(error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+      setError('เกิดข้อผิดพลาดในการดึงข้อมูลนิสิต');
+    }
+  };
+
+  const fetchStudentDocuments = async () => {
+    try {
+      setLoadingData(true);
+      
+      // เรียกใช้ API route ของ Next.js
+      const response = await fetch(`/api/teacher/student-documents/${studentId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Cannot fetch documents`);
+      }
+      
+      const documentsData = await response.json();
+      setDocuments(documentsData);
+    } catch (error) {
+      console.error('Error fetching student documents:', error);
+      setError('เกิดข้อผิดพลาดในการดึงข้อมูลเอกสาร');
+    } finally {
+      setLoadingData(false);
     }
   };
 
@@ -310,6 +222,15 @@ const TeacherDocuments = () => {
     }
   };
 
+  const getCategoryColor = (category: Document['category']) => {
+    switch (category) {
+      case 'pre-training': return '#1976d2';
+      case 'during-training': return '#ed6c02'; 
+      case 'post-training': return '#2e7d32';
+      default: return '#757575';
+    }
+  };
+
   // Handle approval/rejection
   const handleApprovalAction = (doc: Document, action: 'approve' | 'reject') => {
     setSelectedDocument(doc);
@@ -323,33 +244,27 @@ const TeacherDocuments = () => {
 
     setProcessing(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const updatedDocuments = documents.map(doc => {
-        if (doc.id === selectedDocument.id) {
-          const newHistory = doc.submissionHistory || [];
-          newHistory.push({
-            date: new Date().toISOString().split('T')[0],
-            action: actionType,
-            comment: approvalComment,
-            by: `${user?.fname} ${user?.sname}`
-          });
-
-          return {
-            ...doc,
-            status: actionType === 'approve' ? 'approved' as const : 'rejected' as const,
-            approvedDate: actionType === 'approve' ? new Date().toISOString().split('T')[0] : undefined,
-            approvedBy: actionType === 'approve' ? `${user?.fname} ${user?.sname}` : undefined,
-            rejectedReason: actionType === 'reject' ? approvalComment : undefined,
-            comment: approvalComment,
-            submissionHistory: newHistory
-          };
-        }
-        return doc;
+      // เรียกใช้ API route ของ Next.js
+      const response = await fetch(`/api/teacher/student-documents/${studentId}/${selectedDocument.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: actionType === 'approve' ? 'approved' : 'rejected',
+          comment: approvalComment.trim(),
+          teacher_id: user?.id
+        }),
       });
 
-      setDocuments(updatedDocuments);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update document status');
+      }
+
+      // รีเฟรชข้อมูลเอกสาร
+      await fetchStudentDocuments();
+
       setSnackbar({
         open: true,
         message: `เอกสาร "${selectedDocument.name}" ${actionType === 'approve' ? 'อนุมัติ' : 'ไม่อนุมัติ'}เรียบร้อยแล้ว`,
@@ -361,9 +276,10 @@ const TeacherDocuments = () => {
       setApprovalComment('');
       setActionType(null);
     } catch (error) {
+      console.error('Error updating document approval:', error);
       setSnackbar({
         open: true,
-        message: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+        message: error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการอัปเดตสถานะเอกสาร กรุณาลองใหม่อีกครั้ง',
         severity: 'error'
       });
     } finally {
@@ -381,12 +297,7 @@ const TeacherDocuments = () => {
     setDetailDialog(true);
   };
 
-  const getProgress = () => {
-    const total = documents.filter(doc => doc.required).length;
-    const completed = documents.filter(doc => doc.required && doc.status === 'approved').length;
-    return { completed, total, percentage: (completed / total) * 100 };
-  };
-
+  // Group documents by category
   const groupedDocuments = documents.reduce((groups, doc) => {
     if (!groups[doc.category]) {
       groups[doc.category] = [];
@@ -403,19 +314,17 @@ const TeacherDocuments = () => {
     );
   }
 
-  const progress = getProgress();
-
   return (
     <Box sx={{ flexGrow: 1, minHeight: "100vh", bgcolor: "#f5f5f5" }}>
       {/* Header */}
       <AppBar position="static" sx={{ bgcolor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
         <Toolbar>
-          <IconButton edge="start" color="inherit" onClick={() => router.push("/teacher/students")}>
+          <IconButton edge="start" color="inherit" onClick={() => router.push("/")}>
             <ArrowBack />
           </IconButton>
           <Description sx={{ mr: 2 }} />
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            เอกสารการฝึกงาน
+            เอกสารของนิสิต
           </Typography>
         </Toolbar>
       </AppBar>
@@ -455,30 +364,6 @@ const TeacherDocuments = () => {
           </Paper>
         )}
 
-        {/* Progress Card */}
-        <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: 3 }}>
-          <Typography variant="h6" gutterBottom color="primary.main">
-            ความคืบหน้าเอกสาร
-          </Typography>
-          <Box display="flex" alignItems="center" mb={2}>
-            <Box sx={{ width: '100%', mr: 1 }}>
-              <LinearProgress 
-                variant="determinate" 
-                value={progress.percentage} 
-                sx={{ height: 10, borderRadius: 5 }}
-              />
-            </Box>
-            <Box minWidth={35}>
-              <Typography variant="body2" color="text.secondary">
-                {Math.round(progress.percentage)}%
-              </Typography>
-            </Box>
-          </Box>
-          <Typography variant="body2" color="textSecondary">
-            เอกสารจำเป็น: {progress.completed}/{progress.total} ฉบับ
-          </Typography>
-        </Paper>
-
         {/* Error Alert */}
         {error && (
           <Alert severity="error" sx={{ mb: 4 }}>
@@ -490,16 +375,26 @@ const TeacherDocuments = () => {
         {Object.entries(groupedDocuments).map(([category, docs]) => (
           <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }} key={category}>
             <CardContent sx={{ p: 0 }}>
-              <Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
+              <Box sx={{ 
+                p: 3, 
+                borderBottom: '1px solid #e0e0e0',
+                background: `linear-gradient(135deg, ${getCategoryColor(category as Document['category'])}15 0%, ${getCategoryColor(category as Document['category'])}05 100%)`
+              }}>
                 <Box display="flex" alignItems="center">
-                  {getCategoryIcon(category as Document['category'])}
-                  <Typography variant="h6" color="primary.main" sx={{ ml: 1 }}>
+                  <Box sx={{ color: getCategoryColor(category as Document['category']) }}>
+                    {getCategoryIcon(category as Document['category'])}
+                  </Box>
+                  <Typography variant="h6" sx={{ ml: 1, color: getCategoryColor(category as Document['category']) }}>
                     เอกสาร{getCategoryName(category as Document['category'])}
                   </Typography>
                   <Chip 
                     label={`${docs.length} รายการ`} 
                     size="small" 
-                    sx={{ ml: 2 }}
+                    sx={{ 
+                      ml: 2,
+                      bgcolor: getCategoryColor(category as Document['category']),
+                      color: 'white'
+                    }}
                   />
                 </Box>
               </Box>
@@ -509,17 +404,20 @@ const TeacherDocuments = () => {
                   <div key={doc.id}>
                     <ListItem 
                       sx={{ 
-                        py: 2,
+                        py: 3,
                         '&:hover': { bgcolor: 'grey.50' }
                       }}
                     >
                       <ListItemIcon>
-                        {getStatusIcon(doc.status)}
+                        <Box sx={{ color: getCategoryColor(doc.category) }}>
+                          {getStatusIcon(doc.status)}
+                        </Box>
                       </ListItemIcon>
                       <ListItemText
+                        disableTypography
                         primary={
-                          <Box display="flex" alignItems="center">
-                            <Typography variant="subtitle1">
+                          <Box>
+                            <Typography variant="h6" gutterBottom component="div">
                               {doc.name}
                               {doc.required && (
                                 <Chip 
@@ -533,12 +431,12 @@ const TeacherDocuments = () => {
                           </Box>
                         }
                         secondary={
-                          <Box component="div">
-                            <Typography variant="body2" color="textSecondary" gutterBottom component="div">
+                          <Box>
+                            <Typography variant="body1" color="textSecondary" gutterBottom component="div">
                               {doc.description}
                             </Typography>
                             {doc.submittedDate && (
-                              <Typography variant="caption" color="textSecondary" component="div">
+                              <Typography variant="caption" color="textSecondary" component="div" sx={{ mt: 0.5 }}>
                                 ส่งเมื่อ: {new Date(doc.submittedDate).toLocaleDateString('th-TH')}
                                 {doc.approvedDate && (
                                   <> | อนุมัติเมื่อ: {new Date(doc.approvedDate).toLocaleDateString('th-TH')}</>
@@ -548,29 +446,18 @@ const TeacherDocuments = () => {
                           </Box>
                         }
                       />
-                      <Box display="flex" alignItems="center" gap={1} flexDirection="column">
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Chip
-                            icon={getStatusIcon(doc.status)}
-                            label={getStatusText(doc.status)}
-                            color={getStatusColor(doc.status) as any}
-                            size="small"
-                          />
-                          {doc.downloadUrl && doc.status === 'approved' && (
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              startIcon={<Download />}
-                              onClick={() => window.open(doc.downloadUrl, '_blank')}
-                            >
-                              ดาวน์โหลด
-                            </Button>
-                          )}
-                        </Box>
+                      <Box display="flex" alignItems="center" gap={2} flexDirection="column">
+                        {/* Status Chip */}
+                        <Chip
+                          icon={getStatusIcon(doc.status)}
+                          label={getStatusText(doc.status)}
+                          color={getStatusColor(doc.status) as any}
+                          size="medium"
+                        />
                         
-                        {/* Action buttons for teachers */}
-                        <Box display="flex" gap={1} mt={1}>
-                          {doc.status === 'submitted' && (
+                        {/* Action buttons for submitted documents */}
+                        {doc.status === 'submitted' && (
+                          <Box display="flex" gap={1}>
                             <ButtonGroup size="small">
                               <Button
                                 variant="contained"
@@ -589,30 +476,32 @@ const TeacherDocuments = () => {
                                 ไม่อนุมัติ
                               </Button>
                             </ButtonGroup>
-                          )}
-                          
-                          {(doc.status === 'submitted' || doc.formData) && (
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              startIcon={<Visibility />}
-                              onClick={() => handleViewDetails(doc)}
-                            >
-                              ดูรายละเอียด
-                            </Button>
-                          )}
-                          
-                          {doc.submissionHistory && doc.submissionHistory.length > 0 && (
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              startIcon={<History />}
-                              onClick={() => handleViewHistory(doc)}
-                            >
-                              ประวัติ
-                            </Button>
-                          )}
-                        </Box>
+                          </Box>
+                        )}
+                        
+                        {/* View details button for submitted documents */}
+                        {(doc.status === 'submitted' && doc.formData) && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<Visibility />}
+                            onClick={() => handleViewDetails(doc)}
+                          >
+                            ดูข้อมูลที่กรอก
+                          </Button>
+                        )}
+                        
+                        {/* History button */}
+                        {doc.submissionHistory && doc.submissionHistory.length > 0 && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<History />}
+                            onClick={() => handleViewHistory(doc)}
+                          >
+                            ประวัติ
+                          </Button>
+                        )}
                       </Box>
                     </ListItem>
                     {index < docs.length - 1 && <Divider />}
@@ -690,7 +579,6 @@ const TeacherDocuments = () => {
                 {/* COOP-01 Data */}
                 {selectedDocument.documentType === 'COOP-01' && (
                   <Grid container spacing={3}>
-                    {/* ข้อมูลส่วนตัว */}
                     <Grid item xs={12}>
                       <Card elevation={2} sx={{ mb: 2 }}>
                         <CardContent>
@@ -726,25 +614,20 @@ const TeacherDocuments = () => {
                               <Typography variant="body2" color="textSecondary">คณะ</Typography>
                               <Typography variant="body1">{selectedDocument.formData.faculty}</Typography>
                             </Grid>
-                            <Grid item xs={12}>
-                              <Typography variant="body2" color="textSecondary">ภาคการศึกษา</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.semester}</Typography>
-                            </Grid>
                           </Grid>
                         </CardContent>
                       </Card>
                     </Grid>
 
-                    {/* ข้อมูลการฝึกงาน */}
                     <Grid item xs={12}>
                       <Card elevation={2}>
                         <CardContent>
                           <Typography variant="h6" color="primary.main" gutterBottom>
-                            🏢 ข้อมูลการฝึกงานที่เลือก
+                            🏢 ข้อมูลการฝึกงาน
                           </Typography>
                           <Grid container spacing={2}>
                             <Grid item xs={12}>
-                              <Typography variant="body2" color="textSecondary">ชื่อสถานประกอบการ</Typography>
+                              <Typography variant="body2" color="textSecondary">สถานประกอบการ</Typography>
                               <Typography variant="body1">{selectedDocument.formData.selectedEntrepreneur}</Typography>
                             </Grid>
                             <Grid item xs={12}>
@@ -761,12 +644,14 @@ const TeacherDocuments = () => {
                             </Grid>
                             <Grid item xs={12}>
                               <Typography variant="body2" color="textSecondary">อาจารย์ที่ปรึกษา 1</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.advisor1}</Typography>
+                              <Typography variant="body1">{selectedDocument.formData.advisor1 || 'ไม่ได้ระบุ'}</Typography>
                             </Grid>
-                            <Grid item xs={12}>
-                              <Typography variant="body2" color="textSecondary">อาจารย์ที่ปรึกษา 2</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.advisor2}</Typography>
-                            </Grid>
+                            {selectedDocument.formData.advisor2 && (
+                              <Grid item xs={12}>
+                                <Typography variant="body2" color="textSecondary">อาจารย์ที่ปรึกษา 2</Typography>
+                                <Typography variant="body1">{selectedDocument.formData.advisor2}</Typography>
+                              </Grid>
+                            )}
                           </Grid>
                         </CardContent>
                       </Card>
@@ -777,52 +662,6 @@ const TeacherDocuments = () => {
                 {/* COOP-04 Data */}
                 {selectedDocument.documentType === 'COOP-04' && (
                   <Grid container spacing={3}>
-                    {/* ข้อมูลนิสิตและบริษัท */}
-                    <Grid item xs={12}>
-                      <Card elevation={2} sx={{ mb: 2 }}>
-                        <CardContent>
-                          <Typography variant="h6" color="primary.main" gutterBottom>
-                            👤 ข้อมูลนิสิตและสถานประกอบการ
-                          </Typography>
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">ชื่อ-นามสกุล</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.studentName}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">รหัสนิสิต</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.studentId}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">คณะ</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.faculty}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">สาขาวิชา</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.major}</Typography>
-                            </Grid>
-                            <Grid item xs={12}>
-                              <Typography variant="body2" color="textSecondary">ชื่อบริษัท</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.companyName}</Typography>
-                            </Grid>
-                            <Grid item xs={12}>
-                              <Typography variant="body2" color="textSecondary">ที่อยู่บริษัท</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.companyAddress}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">โทรศัพท์บริษัท</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.companyPhone}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">อีเมลบริษัท</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.companyEmail}</Typography>
-                            </Grid>
-                          </Grid>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-
-                    {/* ข้อมูลที่พัก */}
                     <Grid item xs={12}>
                       <Card elevation={2} sx={{ mb: 2 }}>
                         <CardContent>
@@ -833,12 +672,8 @@ const TeacherDocuments = () => {
                             <Grid item xs={12} sm={6}>
                               <Typography variant="body2" color="textSecondary">ประเภทที่พัก</Typography>
                               <Typography variant="body1">
-                                {selectedDocument.formData.accommodationType === 'dormitory' ? 'หอพัก' :
-                                 selectedDocument.formData.accommodationType === 'apartment' ? 'อพาร์ทเมนท์' :
-                                 selectedDocument.formData.accommodationType === 'condo' ? 'คอนโดมิเนียม' :
-                                 selectedDocument.formData.accommodationType === 'house' ? 'บ้านเช่า' :
-                                 selectedDocument.formData.accommodationType === 'relative' ? 'บ้านญาติ' :
-                                 selectedDocument.formData.accommodationType === 'company' ? 'ที่พักของบริษัท' : 'อื่นๆ'}
+                                {selectedDocument.formData.accommodationType === 'apartment' ? 'อพาร์ทเมนท์' :
+                                 selectedDocument.formData.accommodationType === 'dormitory' ? 'หอพัก' : 'อื่นๆ'}
                               </Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
@@ -850,44 +685,30 @@ const TeacherDocuments = () => {
                               <Typography variant="body1">{selectedDocument.formData.roomNumber}</Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">เบอร์โทรศัพท์</Typography>
+                              <Typography variant="body2" color="textSecondary">โทรศัพท์</Typography>
                               <Typography variant="body1">{selectedDocument.formData.phoneNumber}</Typography>
                             </Grid>
                             <Grid item xs={12}>
                               <Typography variant="body2" color="textSecondary">ที่อยู่</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.address}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">ตำบล/แขวง</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.subdistrict}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">อำเภอ/เขต</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.district}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">จังหวัด</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.province}</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">รหัสไปรษณีย์</Typography>
-                              <Typography variant="body1">{selectedDocument.formData.postalCode}</Typography>
+                              <Typography variant="body1">
+                                {selectedDocument.formData.address} ตำบล{selectedDocument.formData.subdistrict} 
+                                อำเภอ{selectedDocument.formData.district} จังหวัด{selectedDocument.formData.province} {selectedDocument.formData.postalCode}
+                              </Typography>
                             </Grid>
                           </Grid>
                         </CardContent>
                       </Card>
                     </Grid>
 
-                    {/* ข้อมูลผู้ติดต่อฉุกเฉิน */}
                     <Grid item xs={12}>
-                      <Card elevation={2} sx={{ mb: 2 }}>
+                      <Card elevation={2}>
                         <CardContent>
                           <Typography variant="h6" color="primary.main" gutterBottom>
-                            📞 ผู้ติดต่อกรณีฉุกเฉิน
+                            📞 ผู้ติดต่อฉุกเฉิน
                           </Typography>
                           <Grid container spacing={2}>
                             <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">ชื่อ-นามสกุล</Typography>
+                              <Typography variant="body2" color="textSecondary">ชื่อผู้ติดต่อ</Typography>
                               <Typography variant="body1">{selectedDocument.formData.emergencyContact}</Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
@@ -903,34 +724,29 @@ const TeacherDocuments = () => {
                       </Card>
                     </Grid>
 
-                    {/* ข้อมูลการเดินทาง */}
                     <Grid item xs={12}>
                       <Card elevation={2}>
                         <CardContent>
                           <Typography variant="h6" color="primary.main" gutterBottom>
-                            🚌 ข้อมูลการเดินทางไปสถานประกอบการ
+                            🚌 การเดินทาง
                           </Typography>
                           <Grid container spacing={2}>
                             <Grid item xs={12} sm={6}>
                               <Typography variant="body2" color="textSecondary">วิธีการเดินทาง</Typography>
                               <Typography variant="body1">
-                                {selectedDocument.formData.travelMethod === 'car' ? 'รถยนต์ส่วนตัว' :
-                                 selectedDocument.formData.travelMethod === 'motorcycle' ? 'รถจักรยานยนต์' :
-                                 selectedDocument.formData.travelMethod === 'bus' ? 'รถโดยสารประจำทาง' :
-                                 selectedDocument.formData.travelMethod === 'taxi' ? 'แท็กซี่' :
-                                 selectedDocument.formData.travelMethod === 'company' ? 'รถรับส่งของบริษัท' : 'อื่นๆ'}
+                                {selectedDocument.formData.travelMethod === 'bus' ? 'รถโดยสารประจำทาง' : 'อื่นๆ'}
                               </Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">รายละเอียดการเดินทาง</Typography>
+                              <Typography variant="body2" color="textSecondary">รายละเอียด</Typography>
                               <Typography variant="body1">{selectedDocument.formData.travelDetails}</Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">ระยะทางประมาณ</Typography>
+                              <Typography variant="body2" color="textSecondary">ระยะทาง</Typography>
                               <Typography variant="body1">{selectedDocument.formData.distanceKm} กิโลเมตร</Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" color="textSecondary">เวลาที่ใช้ในการเดินทาง</Typography>
+                              <Typography variant="body2" color="textSecondary">เวลาที่ใช้</Typography>
                               <Typography variant="body1">{selectedDocument.formData.travelTime} นาที</Typography>
                             </Grid>
                           </Grid>
@@ -939,11 +755,6 @@ const TeacherDocuments = () => {
                     </Grid>
                   </Grid>
                 )}
-
-                <Divider sx={{ my: 3 }} />
-                <Typography variant="caption" color="textSecondary">
-                  ส่งโดย: {selectedDocument.formData.submittedBy} • {new Date(selectedDocument.formData.submittedDate).toLocaleString('th-TH')}
-                </Typography>
               </Box>
             )}
           </DialogContent>
@@ -971,16 +782,13 @@ const TeacherDocuments = () => {
                 <Typography variant="subtitle1" gutterBottom>
                   {selectedDocument.name}
                 </Typography>
-                <Typography variant="body2" color="textSecondary" gutterBottom sx={{ mb: 3 }}>
-                  {selectedDocument.description}
-                </Typography>
                 
                 {selectedDocument.submissionHistory && selectedDocument.submissionHistory.length > 0 ? (
                   <List>
                     {selectedDocument.submissionHistory.map((history, index) => (
                       <ListItem key={index} divider={index < selectedDocument.submissionHistory!.length - 1}>
                         <ListItemIcon>
-                          {history.action === 'submitted' && <Upload />}
+                          {history.action === 'submitted' && <Assignment />}
                           {history.action === 'approved' && <CheckCircle color="success" />}
                           {history.action === 'rejected' && <Warning color="error" />}
                         </ListItemIcon>
@@ -1033,11 +841,19 @@ const TeacherDocuments = () => {
           open={snackbar.open}
           autoHideDuration={6000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          message={snackbar.message}
-        />
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </Box>
   );
 };
 
-export default TeacherDocuments;
+export default TeacherStudentDocuments;

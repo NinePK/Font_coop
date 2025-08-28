@@ -78,6 +78,12 @@ interface DashboardStats {
   pendingReports: number;
 }
 
+interface COOP01Submission {
+  studentId: number;
+  status: 'pending' | 'approved' | 'rejected' | 'not_submitted';
+  submittedAt?: string;
+}
+
 const HomePage = () => {
   const { 
     user, 
@@ -95,6 +101,7 @@ const HomePage = () => {
   // Teacher-specific state
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [coop01Submissions, setCoop01Submissions] = useState<COOP01Submission[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
     activeInternships: 0,
@@ -108,7 +115,7 @@ const HomePage = () => {
   useEffect(() => {
     if (user && !loading && isTeacher) {
       fetchStudents();
-      fetchDashboardStats();
+      // fetchDashboardStats will be called after fetchStudents completes
     }
   }, [user, loading, isTeacher]);
 
@@ -116,31 +123,98 @@ const HomePage = () => {
     try {
       setLoadingStudents(true);
       const backUrl = process.env.NEXT_PUBLIC_BACK_URL || 'http://localhost:6008';
+      
+      console.log('Fetching students for teacher ID:', user?.id); // Debug log
+      console.log('Backend URL:', backUrl); // Debug log
+      
+      // เรียกใช้ API เดิมก่อน (จะต้องแก้ไข backend ภายหลัง)
       const response = await fetch(`${backUrl}/teacher/students/${user?.id}`);
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Students data received:', data); // Debug log
         setStudents(data);
+        // Fetch COOP-01 submissions after getting students
+        await fetchCoop01Submissions();
+        // Update dashboard stats after all data is loaded
+        await fetchDashboardStats();
+      } else {
+        console.log('API response not ok:', response.status, response.statusText); // Debug log
+        // ใส่ mock data ชั่วคราวเมื่อ API ไม่พร้อม
+        setStudents([
+          {
+            id: 1,
+            userId: 1,
+            user: {
+              id: 1,
+              fname: "สุพัตรา",
+              sname: "ใจดี", 
+              username: "64123456789",
+              major: {
+                majorTh: "เทคโนโลยีสารสนเทศ",
+                faculty: {
+                  facultyTh: "คณะเทคโนโลยีสารสนเทศและการสื่อสาร"
+                }
+              }
+            },
+            job: {
+              name: "นักพัฒนาซอฟต์แวร์",
+              entrepreneur: {
+                nameTh: "บริษัท เทคโนโลยี ABC จำกัด"
+              }
+            },
+            startdate: "2024-10-15",
+            enddate: "2025-02-15",
+            status: 1
+          }
+        ]);
       }
     } catch (error) {
-      console.error('Error fetching students:', error);
+      console.error('Error fetching assigned students:', error);
       setStudents([]);
     } finally {
       setLoadingStudents(false);
     }
   };
 
+  const fetchCoop01Submissions = async () => {
+    try {
+      const response = await fetch(`/api/coop01?teacherId=${user?.id}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Transform backend data to match our interface
+        const submissions = data.map((submission: any) => ({
+          studentId: submission.studentId,
+          status: submission.status || 'not_submitted',
+          submittedAt: submission.submittedAt
+        }));
+        setCoop01Submissions(submissions);
+      }
+    } catch (error) {
+      console.error('Error fetching COOP-01 submissions:', error);
+      setCoop01Submissions([]);
+    }
+  };
+
   const fetchDashboardStats = async () => {
     try {
-      // Mock data for dashboard stats
+      // ใช้ข้อมูลจาก student data แทน API ที่ยังไม่มี
       setStats({
-        totalStudents: 15,
-        activeInternships: 12,
-        completedReports: 45,
-        pendingReports: 3,
+        totalStudents: students.length,
+        activeInternships: students.filter(s => s.status === 1).length,
+        completedReports: 0,
+        pendingReports: coop01Submissions.filter(s => s.status === 'pending').length,
       });
+      console.log('Dashboard stats calculated from local data'); // Debug log
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      console.error('Error calculating dashboard stats:', error);
+      setStats({
+        totalStudents: 0,
+        activeInternships: 0,
+        completedReports: 0,
+        pendingReports: 0,
+      });
     }
   };
 
@@ -159,6 +233,31 @@ const HomePage = () => {
       case 2: return 'เสร็จสิ้น';
       case 0: return 'รอเริ่ม';
       default: return 'ไม่ทราบ';
+    }
+  };
+
+  const getCoop01Status = (studentId: number) => {
+    const submission = coop01Submissions.find(s => s.studentId === studentId);
+    return submission?.status || 'not_submitted';
+  };
+
+  const getCoop01StatusText = (status: string) => {
+    switch (status) {
+      case 'approved': return 'อนุมัติแล้ว';
+      case 'pending': return 'รออนุมัติ';
+      case 'rejected': return 'ไม่อนุมัติ';
+      case 'not_submitted': return 'ยังไม่ส่ง';
+      default: return 'ไม่ทราบ';
+    }
+  };
+
+  const getCoop01StatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return 'success';
+      case 'pending': return 'warning';
+      case 'rejected': return 'error';
+      case 'not_submitted': return 'error';
+      default: return 'default';
     }
   };
 
@@ -354,6 +453,7 @@ const HomePage = () => {
                         {Math.round((stats.completedReports / (stats.completedReports + stats.pendingReports)) * 100)}% เสร็จสิ้น
                       </Typography>
                     </Box>
+                    <Divider sx={{ my: 2 }} />
                   </CardContent>
                 </Card>
               </Grid>
@@ -388,7 +488,7 @@ const HomePage = () => {
             </Grid>
 
             {/* Students Table */}
-            <Card elevation={3} sx={{ borderRadius: 2 }}>
+            <Card elevation={3} sx={{ borderRadius: 2, mt: 4 }}>
               <CardContent sx={{ p: 0 }}>
                 <Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
                   <Typography variant="h6" color="primary.main">
@@ -407,12 +507,8 @@ const HomePage = () => {
                         <TableRow>
                           <TableCell><strong>รหัสนิสิต</strong></TableCell>
                           <TableCell><strong>ชื่อ-นามสกุล</strong></TableCell>
-                          <TableCell><strong>สาขาวิชา</strong></TableCell>
                           <TableCell><strong>บริษัท</strong></TableCell>
-                          <TableCell><strong>ตำแหน่ง</strong></TableCell>
-                          <TableCell><strong>วันที่เริ่ม-สิ้นสุด</strong></TableCell>
-                          <TableCell><strong>สถานะ</strong></TableCell>
-                          <TableCell><strong>เอกสาร & รายงาน</strong></TableCell>
+                          <TableCell><strong>การจัดการ</strong></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -430,13 +526,8 @@ const HomePage = () => {
                               <Typography fontWeight="medium">
                                 {student.user.fname} {student.user.sname}
                               </Typography>
-                            </TableCell>
-                            <TableCell>
-                              <Typography variant="body2" color="textSecondary">
-                                {student.user.major.majorTh}
-                              </Typography>
                               <Typography variant="caption" color="textSecondary">
-                                {student.user.major.faculty.facultyTh}
+                                {student.user.major.majorTh}
                               </Typography>
                             </TableCell>
                             <TableCell>
@@ -448,71 +539,19 @@ const HomePage = () => {
                               </Box>
                             </TableCell>
                             <TableCell>
-                              <Typography variant="body2">
-                                {student.job.name}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              <Typography variant="body2">
-                                {new Date(student.startdate).toLocaleDateString('th-TH')}
-                              </Typography>
-                              <Typography variant="body2">
-                                {new Date(student.enddate).toLocaleDateString('th-TH')}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={getStatusText(student.status)}
-                                color={getStatusColor(student.status) as any}
+                              <Button
+                                variant="contained"
                                 size="small"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Box display="flex" flexDirection="column" gap={1}>
-                                <Box display="flex" gap={1}>
-                                  <Button
-                                    variant="outlined"
-                                    size="small"
-                                    startIcon={<Visibility />}
-                                    onClick={() => router.push(`/teacher/students/${student.id}`)}
-                                    fullWidth
-                                  >
-                                    ข้อมูลนิสิต
-                                  </Button>
-                                  <Button
-                                    variant="outlined"
-                                    size="small"
-                                    startIcon={<Description />}
-                                    onClick={() => router.push(`/teacher/documents/${student.id}`)}
-                                    fullWidth
-                                    color="secondary"
-                                  >
-                                    เอกสาร
-                                  </Button>
-                                </Box>
-                                <Box display="flex" gap={1}>
-                                  <Button
-                                    variant="outlined"
-                                    size="small"
-                                    startIcon={<Timeline />}
-                                    onClick={() => router.push(`/teacher/reports/${student.id}`)}
-                                    fullWidth
-                                    color="success"
-                                  >
-                                    รายงานสัปดาห์
-                                  </Button>
-                                  <Button
-                                    variant="outlined"
-                                    size="small"
-                                    startIcon={<Assessment />}
-                                    onClick={() => router.push(`/teacher/evaluation/${student.id}`)}
-                                    fullWidth
-                                    color="warning"
-                                  >
-                                    ประเมินผล
-                                  </Button>
-                                </Box>
-                              </Box>
+                                startIcon={<Description />}
+                                onClick={() => router.push(`/teacher/documents/${student.id}`)}
+                                color="primary"
+                                sx={{
+                                  textTransform: "none",
+                                  borderRadius: 2
+                                }}
+                              >
+                                เอกสาร
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -522,6 +561,7 @@ const HomePage = () => {
                 )}
               </CardContent>
             </Card>
+
           </>
         ) : (
           // Student users - show documents directly
